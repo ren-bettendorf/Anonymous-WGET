@@ -110,8 +110,9 @@ int main(int argc, char* argv[])
 	while(true)
 	{
 		int incomingSock;
-		socklen_t sinSize = sizeof sin;
-		if ( (incomingSock = accept(serverSock, (struct sockaddr*)&sin, &sinSize)) < 0 )
+		struct sockaddr_in clientAddr;
+		socklen_t addrSize = sizeof clientAddr;
+		if ( (incomingSock = accept(serverSock, (struct sockaddr*)&clientAddr, &addrSize)) < 0 )
 		{
 			string errorMessage("Error: Problem accepting client.");
 			cleanExit(1, errorMessage);
