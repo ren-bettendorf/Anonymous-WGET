@@ -24,8 +24,19 @@ void cleanExit(int exitCode, string message)
 	exit(exitCode);
 }
 
-void deserializePacket() {
+void handleChainList()
+{
+
+}
+
+void deserializePacket() 
+{
     
+}
+
+void deserializeInitialPacket(char* message)
+{
+	
 }
 
 int displayHelpInfo() 
@@ -37,16 +48,19 @@ int displayHelpInfo()
 }
 
 
-void handleChainList()
-{
-   
-}
-
-
 void handleConnectionThread(int port, int incomingSock) 
 {
 	int nextSock;
+	char initialMessageBuffer[256];
+	int messageSize;
+	if ( (messageSize = recv(incomingSock, initialMessageBuffer, 256, 0)) < 0 )
+	{
+		cleanExit(1, "Error: recv failed");
+	}
 	
+	deserializeInitialPacket(initialMessageBuffer);
+
+
 }
 
 void signalHandler(int signal)
