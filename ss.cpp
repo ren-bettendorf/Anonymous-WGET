@@ -24,7 +24,22 @@ void cleanExit(int exitCode, string message)
 	exit(exitCode);
 }
 
-void handleChainList()
+int handleNextStone(char* chainlist, char* url)
+{
+	return 1;
+}
+
+void grabFile(char* url)
+{
+
+}
+
+void sendFileToPreviousStone(int sock)
+{
+
+}
+
+void waitForFile(int sock)
 {
 
 }
@@ -48,19 +63,47 @@ int displayHelpInfo()
 }
 
 
-void handleConnectionThread(int port, int incomingSock) 
+void handleConnectionThread(int port, int previousStoneSock) 
 {
-	int nextSock;
-	char initialMessageBuffer[256];
-	int messageSize;
-	if ( (messageSize = recv(incomingSock, initialMessageBuffer, 256, 0)) < 0 )
+	int nextStoneSock;
+	char messageHeaderBuffer[4];
+
+	if ( recv(previousStoneSock, messageHeaderBuffer, 4, 0) < 0 )
 	{
 		cleanExit(1, "Error: recv failed");
 	}
-	
-	deserializeInitialPacket(initialMessageBuffer);
 
+	uint16_t sizeChainlist = -1;
+	memcpy(&sizeChainlist, messageHeaderBuffer, 2);
+	sizeChainlist = ntohs(sizeChainlist);
 
+	uint16_t sizeUrl = -1;
+	memcpy(&sizeUrl, messageHeaderBuffer + 2, 2);
+	sizeUrl = ntohs(sizeUrl);
+
+	char messageBuffer[sizeUrl + sizeChainlist];
+	if ( recv(previousStoneSock, messageBuffer, sizeUrl + sizeChainlist, 0) < 0 )
+	{
+		cleanExit(1, "Error: recv failed");
+	}
+
+	char chainlist[sizeChainlist];
+	memcpy(chainlist, messageBuffer, sizeChainlist);
+
+	char url[sizeUrl];
+	memcpy(url, messageBuffer + sizeChainlist, sizeUrl);
+
+	if(sizeChainlist > 0)
+	{
+		nextStoneSock = handleNextStone(chainlist, url);
+		waitForFile(nextStoneSock);
+		
+	}
+	else
+	{
+		grabFile(url);
+		sendFileToPreviousStone(previousStoneSock);
+	}
 }
 
 void signalHandler(int signal)
@@ -107,7 +150,7 @@ int main(int argc, char* argv[])
 	//inet_ntop(AF_INET, &addr.sin_addr.s_addr, ip, INET_ADDRSTRLEN);
 	
 	cout << "Stepping Stone " << ip << ":" << port << endl;
-		  
+
 	if ( (serverSock = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
 	{
 		string errorMessage("Error: Unable to open socket");
