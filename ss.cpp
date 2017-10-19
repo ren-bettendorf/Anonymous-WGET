@@ -32,9 +32,37 @@ int handleNextStone(char* chainlistChar, char* url)
 	string chainlist = string(chainlistChar);
 
 	vector<string> splitChain;
-	split(splitChain, chainlist, is_any_of("\t"));
-	
-	return 1;
+	split(splitChain, chainlist, is_any_of(" "));
+
+	srand(time(NULL));
+
+	int randIndex = rand() % splitChain.size();
+
+	string nextStone = splitChain.at(randIndex);
+	splitChain.erase(splitChain.begin() + randIndex);
+
+	vector<string> splitIpAndPort;
+	split(splitIpAndPort, nextStone, is_any_of(":"));
+
+	struct sockaddr_in nextStoneAddr;
+
+	nextStoneAddr.sin_family = AF_INET;
+        nextStoneAddr.sin_addr.s_addr = inet_addr(splitIpAndPort.at(0).c_str());
+       	nextStoneAddr.sin_port = htons(stoi(splitIpAndPort.at(1)));
+	int nextStoneSock;
+
+        if ( (nextStoneSock = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
+        {
+                string errorMessage("Error: Unable to open socket");
+                cleanExit(1, errorMessage);
+        }
+        if ( (bind(nextStoneSock, (struct sockaddr*)&nextStoneAddr, sizeof(nextStoneAddr))) < 0 )
+        {
+                string errorMessage("Error: Unable to bind socket");
+                cleanExit(1, errorMessage);
+        }
+
+	return nextStoneSock;
 }
 
 void grabFile(char* url)
