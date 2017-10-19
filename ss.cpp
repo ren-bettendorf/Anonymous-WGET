@@ -12,8 +12,11 @@
 #include <arpa/inet.h>
 #include <csignal>
 #include <thread>
+#include <boost/algorithm/string.hpp>
+#include <vector>
 
 using namespace std;
+using namespace boost;
 
 #define DEFAULTPORT 9000
 
@@ -24,8 +27,13 @@ void cleanExit(int exitCode, string message)
 	exit(exitCode);
 }
 
-int handleNextStone(char* chainlist, char* url)
+int handleNextStone(char* chainlistChar, char* url)
 {
+	string chainlist = string(chainlistChar);
+
+	vector<string> splitChain;
+	split(splitChain, chainlist, is_any_of("\t"));
+	
 	return 1;
 }
 
