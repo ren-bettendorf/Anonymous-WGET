@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
     urlSize=sizeof(argv[1]);
     int urlBufSize;
     //Store the Url in a buffer for data packing later
-    UrlBuf=malloc((sizeof(char)*urlSize)+1);
+    UrlBuf= (char*)malloc((sizeof(char)*urlSize)+1);
     if(NULL!=UrlBuf){
         //copy UrlInfo to Buff: Required later to pack data
         strcpy(UrlBuf,argv[1]);
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
     lineLen=256;
     int i;
     char tempLine[256];//required later
-    line=malloc((sizeof(char)*lineLen)+1);
+    line= (char*)malloc((sizeof(char)*lineLen)+1);
     fp=fopen(argv[2],"r");
     if(NULL!=fp) {
         for(i=0;i<randIP;i++) {
@@ -122,12 +122,11 @@ int main(int argc, char *argv[])
     int sizeAddrBuf;
     struct stat st;
     if(stat(argv[2],&st)==0) {
-        ;
         //printf("\n File Size=%d",st.st_size);
     }
     sizeAddrBuf=(st.st_size)*2;  //Extra Space;
     //Allocate memory to
-    AddrBuf=malloc((sizeof(char)*sizeAddrBuf)+1);
+    AddrBuf= (char*)malloc((sizeof(char)*sizeAddrBuf)+1);
     if(NULL==AddrBuf) {
         printf("\n Failed to allocate memory to AddrBuf");
         exit(0);
@@ -138,7 +137,7 @@ int main(int argc, char *argv[])
     //unpack IP and Port
     i=0;
     char*getLine;
-    getLine=malloc((sizeof(char)*lineLen)+1);
+    getLine= (char*)malloc((sizeof(char)*lineLen)+1);
     fp=fopen(argv[2],"r");
     while(i<numOfAddr){
         //read the line
@@ -211,7 +210,7 @@ int main(int argc, char *argv[])
     char filename[256];
     int clientSocket;
     ssize_t length;
-    struct socketAddressIN remoteAddress;
+    struct sockaddr_in remoteAddress;
     char buffer[BUFSIZ];
     int fileSize;
     FILE *receivedFile;
@@ -268,3 +267,4 @@ int main(int argc, char *argv[])
     
     //------------------------------------------------------------------------------------
 }
+
