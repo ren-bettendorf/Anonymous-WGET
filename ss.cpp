@@ -28,7 +28,7 @@ void cleanExit(int exitCode, string message)
 	exit(exitCode);
 }
 
-void sendSystemWget(string url, string filename)
+void sendSystemWget(string url)
 {
 	cout << "wget " << url << endl;
 	const char* wgetMessage = ("wget " + url).c_str();
@@ -153,8 +153,6 @@ void handleConnectionThread(int previousStoneSock)
 	char url[packetInfo.urlLength];
 	memcpy(url, messageBuffer + packetInfo.urlLength, sizeUrl);
 
-	vector<char*> packets;
-
 	if(packetInfo.numberChainlist > 0)
 	{
 		vector<string> chainlistSplit = splitChainlistFromLastStone(chainlist);
@@ -200,6 +198,7 @@ void handleConnectionThread(int previousStoneSock)
 			{
 				cleanExit(1, "Error: Failed to read data size");
 			}
+			send(previousStoneSock, dataSizeBuffer, 4, 0);
 
 			memcpy(&packetSize, dataSizeBuffer, 4);
                 	packetSize = htons(packetSize);
@@ -209,22 +208,47 @@ void handleConnectionThread(int previousStoneSock)
 			{
 				cleanExit(1, "Error: Data read went wrong");
 			}
-
-			packets.push_back(data);
-
+			send(previousStoneSock, data, packetSize, 0);
 			recFileSize += packetSize;
 			cout << "Rec Packet! packet size: " << packetSize << ". Total " << recFileSize << " out of " << fileSize << endl;
 			if (recFileSize == fileSize)
 				allPacketsTransferred = true;
 		}
-
+		close(nextStoneSock);
 	}
 	else
 	{
-		
+		FILE* file;
+		unsigned long size;
+		string requestUrl = createFinalRequestUrl(url);
+		string fileName = parseFileName(requestUrl);
+
+		sendSystemWget(requestUrl);
+
+		file = fopen(fileName.c_str(), "r");
+		if(file == NULL)
+		{
+			cleanExit(1, "Error: Unable to open file");
+		}
+
+		fseek(file, 0, SEEK_END);
+		size = ftell(file);
+		rewind(file);
+
+		// Send file information
+
+		int bufferSize = 10000;
+		char dataRead[bufferSize];
+		unsigned short bytesRead;
+		while( (bytesRead = fread(dataRead, 1, bufferSize, file)) > 0)
+		{
+			// Wrap message size then send
+			//send(previousStoneSock, htons(bytesRead), 2);
+			send(previousStoneSock, dataRead, bytesRead, 0);
+		}
 	}
 
-	// Forward packets
+	close(previousStoneSock);
 }
 
 void signalHandler(int signal)
