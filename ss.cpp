@@ -32,7 +32,8 @@ int handleNextStone(char* chainlistChar, char* url)
 	string chainlist = string(chainlistChar);
 
 	vector<string> splitChain;
-	split(splitChain, chainlist, is_any_of(" "));
+	trim(chainlist);
+	split(splitChain, chainlist, is_any_of(" "), token_compress_on);
 
 	srand(time(NULL));
 
