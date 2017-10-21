@@ -153,6 +153,8 @@ void handleConnectionThread(int previousStoneSock)
 	char url[packetInfo.urlLength];
 	memcpy(url, messageBuffer + packetInfo.urlLength, sizeUrl);
 
+	vector<char*> packets;
+
 	if(packetInfo.numberChainlist > 0)
 	{
 		vector<string> chainlistSplit = splitChainlistFromLastStone(chainlist);
@@ -188,12 +190,41 @@ void handleConnectionThread(int previousStoneSock)
 		char filename[fileNameLength];
 		recv(nextStoneSock, filename, fileNameLength, 0);
 
+		bool allPacketsTransferred = false;
+		unsigned long recFileSize = 0;
+		while(!allPacketsTransferred)
+		{
+			unsigned long packetSize = -1;
+			char dataSizeBuffer[4];
+			if ( (recv(nextStoneSock, dataSizeBuffer, 4, 0) < 0) )
+			{
+				cleanExit(1, "Error: Failed to read data size");
+			}
+
+			memcpy(&packetSize, dataSizeBuffer, 4);
+                	packetSize = htons(packetSize);
+
+			char data[packetSize];
+			if ( (recv(nextStoneSock, data, packetSize, 0) < 0) )
+			{
+				cleanExit(1, "Error: Data read went wrong");
+			}
+
+			packets.push_back(data);
+
+			recFileSize += packetSize;
+			cout << "Rec Packet! packet size: " << packetSize << ". Total " << recFileSize << " out of " << fileSize << endl;
+			if (recFileSize == fileSize)
+				allPacketsTransferred = true;
+		}
 
 	}
 	else
 	{
 		
 	}
+
+	// Forward packets
 }
 
 void signalHandler(int signal)

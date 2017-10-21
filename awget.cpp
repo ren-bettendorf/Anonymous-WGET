@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <arpa/inet.h>
 #include <ctype.h>
+#include "awget.h"
 
 //----------COLLEEN---------------------------------------------------------
 #define FILENAME "index.html"
