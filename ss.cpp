@@ -246,6 +246,11 @@ void handleConnectionThread(int previousStoneSock)
 			//send(previousStoneSock, htons(bytesRead), 2);
 			send(previousStoneSock, dataRead, bytesRead, 0);
 		}
+
+		fclose(file);
+		cout << "Finished transmitting file" << endl;
+		cout << "Removing " << fileName << endl;
+		system( ("rm " + fileName).c_str() );
 	}
 
 	close(previousStoneSock);
