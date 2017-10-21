@@ -14,6 +14,7 @@
 #include <thread>
 #include <boost/algorithm/string.hpp>
 #include <vector>
+#include "awget.h"
 
 using namespace std;
 using namespace boost;
@@ -76,19 +77,6 @@ vector<string> splitChainlistFromLastStone(char* chainlistChar)
 	return splitChainlist;
 }
 
-vector<string> removeCurrentStone(vector<string> chainlist, string currentStone)
-{
-	for(int i = 0; i < chainlist.size(); i++)
-	{
-		if( chainlist[i].compare(currentStone) )
-		{
-			chainlist.erase(chainlist.begin() + i);
-		}
-
-	}
-	return chainlist;
-}
-
 int selectRandomStoneIndex(int max)
 {
 	srand(time(NULL));
@@ -130,46 +118,77 @@ int displayHelpInfo()
 }
 
 
-void handleConnectionThread(string ip, int port, int previousStoneSock) 
+void handleConnectionThread(int previousStoneSock) 
 {
 	int nextStoneSock;
-	char messageHeaderBuffer[4];
+	char messageHeaderBuffer[6];
+	chainlist_packet packetInfo;
 
-	if ( recv(previousStoneSock, messageHeaderBuffer, 4, 0) < 0 )
+	if ( recv(previousStoneSock, messageHeaderBuffer, 6, 0) < 0 )
 	{
 		cleanExit(1, "Error: recv failed");
 	}
 
-	uint16_t sizeChainlist = -1;
+	unsigned short sizeChainlist = -1;
 	memcpy(&sizeChainlist, messageHeaderBuffer, 2);
-	sizeChainlist = ntohs(sizeChainlist);
+	packetInfo.chainlistLength = ntohs(sizeChainlist);
 
-	uint16_t sizeUrl = -1;
+	unsigned short sizeUrl = -1;
 	memcpy(&sizeUrl, messageHeaderBuffer + 2, 2);
-	sizeUrl = ntohs(sizeUrl);
+	packetInfo.urlLength = ntohs(sizeUrl);
 
-	char messageBuffer[sizeUrl + sizeChainlist];
-	if ( recv(previousStoneSock, messageBuffer, sizeUrl + sizeChainlist, 0) < 0 )
+	unsigned short numStonesLeft = -1;
+	memcpy(&numStonesLeft, messageHeaderBuffer + 4, 2);
+	packetInfo.numberChainlist = numStonesLeft;
+
+	char messageBuffer[packetInfo.urlLength + packetInfo.chainlistLength];
+	if ( recv(previousStoneSock, messageBuffer, packetInfo.urlLength + packetInfo.chainlistLength, 0) < 0 )
 	{
 		cleanExit(1, "Error: recv failed");
 	}
 
-	char chainlist[sizeChainlist];
-	memcpy(chainlist, messageBuffer, sizeChainlist);
+	char chainlist[packetInfo.chainlistLength];
+	memcpy(chainlist, messageBuffer, packetInfo.chainlistLength);
 
-	char url[sizeUrl];
-	memcpy(url, messageBuffer + sizeChainlist, sizeUrl);
+	char url[packetInfo.urlLength];
+	memcpy(url, messageBuffer + packetInfo.urlLength, sizeUrl);
 
-	vector<string> splitChainlist = splitChainlistFromLastStone( chainlist );
-	splitChainlist =  removeCurrentStone(splitChainlist, ip + ":" + to_string(port) );
-
-
-	if(splitChainlist.size() > 0)
+	if(packetInfo.numberChainlist > 0)
 	{
+		vector<string> chainlistSplit = splitChainlistFromLastStone(chainlist);
+		cout << "Chainlist is" << endl;
+		for(int i = 0; i < numStonesLeft; i++)
+		{
+			cout << "<" << chainlistSplit.at(i) << ">" << endl;
+		}
+		int nextStoneIndex = selectRandomStoneIndex(numStonesLeft);
+		string nextStone = chainlistSplit.at(nextStoneIndex);
+		chainlistSplit.erase(chainlistSplit.begin() + nextStoneIndex);
+		cout << "Next SS is <" << nextStone << ">" << endl << "waiting for file..." << endl;
+
 		vector<string> nextStoneIpAndPort;
-		string ipAndPort = splitChainlist.at(selectRandomStoneIndex(splitChainlist.size()));
-		split(nextStoneIpAndPort, ipAndPort, is_any_of(":"));
-		connectToNextStone(nextStoneIpAndPort[0], stoi(nextStoneIpAndPort[1]));
+		split(nextStoneIpAndPort, nextStone, is_any_of(":"));
+		nextStoneSock = connectToNextStone(nextStoneIpAndPort[0], stoi(nextStoneIpAndPort[1]));
+
+		bool fileTransfer = false;
+		unsigned long fileSize = -1;
+		unsigned short fileNameLength = -1;
+		char fileMessageBuffer[6];
+		if ( (recv(nextStoneSock, fileMessageBuffer, 6, 0) < 0) )
+		{
+			cleanExit(1, "Error: Failed to read file header");
+		}
+
+		memcpy(&fileSize, fileMessageBuffer, 4);
+		fileSize = htons(fileSize);
+
+		memcpy(&fileNameLength, fileMessageBuffer + 4, 2);
+		fileNameLength = htons(fileNameLength);
+
+		char filename[fileNameLength];
+		recv(nextStoneSock, filename, fileNameLength, 0);
+
+
 	}
 	else
 	{
@@ -247,7 +266,7 @@ int main(int argc, char* argv[])
 		}
 		string ipString(ip);
 
-		thread ssSockThread(handleConnectionThread, ip, port, incomingSock);
+		thread ssSockThread(handleConnectionThread, incomingSock);
 		ssSockThread.join();
 	}
     
