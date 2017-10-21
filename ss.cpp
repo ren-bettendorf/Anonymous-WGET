@@ -37,7 +37,7 @@ void sendSystemWget(string url, string filename)
 string createFinalRequestUrl(string url)
 {
         cout << "Parsing: " << url << endl;
-	
+
         if( contains(url, ("://")) )
         {
                 cout << "String has beginning http(s). Stripping" << endl;
@@ -166,11 +166,14 @@ void handleConnectionThread(string ip, int port, int previousStoneSock)
 
 	if(splitChainlist.size() > 0)
 	{
-
+		vector<string> nextStoneIpAndPort;
+		string ipAndPort = splitChainlist.at(selectRandomStoneIndex(splitChainlist.size()));
+		split(nextStoneIpAndPort, ipAndPort, is_any_of(":"));
+		connectToNextStone(nextStoneIpAndPort[0], stoi(nextStoneIpAndPort[1]));
 	}
 	else
 	{
-
+		
 	}
 }
 
