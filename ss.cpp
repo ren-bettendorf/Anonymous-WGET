@@ -293,25 +293,24 @@ int main(int argc, char* argv[])
 
 	int serverSock;
 	struct sockaddr_in sin;
-    int port;
+    	int port;
 
-    if(argc == 1) 
+	if(argc == 1)
 	{
-        port = DEFAULTPORT;
-    } 
-	else 
+        	port = DEFAULTPORT;
+    	}
+	else
 	{
-        if(argc != 3 || strcmp(argv[1], "-p") != 0) 
+        	if(argc != 3 || strcmp(argv[1], "-p") != 0)
 		{
-            displayHelpInfo();
-        }
-        port = atoi(argv[2]);
-    }
-	
-	char ip[INET_ADDRSTRLEN];
+           		displayHelpInfo();
+        	}
+        	port = atoi(argv[2]);
+    	}
+
 	char hostname[256];
-	
-	if(gethostname(hostname, sizeof hostname) != 0) 
+
+	if(gethostname(hostname, sizeof hostname) != 0)
 	{
 		string errorMessage("Error: Could not find hostname");
 		cleanExit(1, errorMessage);
@@ -319,10 +318,29 @@ int main(int argc, char* argv[])
 	sin.sin_family = AF_INET;
 	sin.sin_addr.s_addr = htons(INADDR_ANY);
 	sin.sin_port = htons(port);
-	
-	//inet_ntop(AF_INET, &addr.sin_addr.s_addr, ip, INET_ADDRSTRLEN);
-	
-	cout << "Stepping Stone " << ip << ":" << port << endl;
+
+	// I modified code found from beej guide that showed how to get ip from hostname
+    	struct addrinfo hints, *res, *p;
+    	char ipstr[INET_ADDRSTRLEN];
+
+    	memset(&hints, 0, sizeof hints);
+    	hints.ai_family = AF_INET; 
+    	hints.ai_socktype = SOCK_STREAM;
+    	getaddrinfo(hostname, NULL, &hints, &res);
+
+    	for(p = res;p != NULL; p = p->ai_next) 
+    	{
+        	if (p->ai_family == AF_INET) 
+		{
+           	 	struct sockaddr_in *ip = (struct sockaddr_in *)p->ai_addr;
+            		void* addr = &(ip->sin_addr);
+            		inet_ntop(AF_INET, &(ip->sin_addr), ipstr, sizeof ipstr);
+            		break;
+		}
+    	}
+  	freeaddrinfo(res);
+
+	cout << "Stepping Stone " << ipstr << ":" << port << endl;
 
 	if ( (serverSock = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
 	{
@@ -334,7 +352,7 @@ int main(int argc, char* argv[])
 		string errorMessage("Error: Unable to bind socket");
 		cleanExit(1, errorMessage);
 	}
-	
+
 	listen(serverSock, 1);
 
 	while(true)
@@ -347,11 +365,11 @@ int main(int argc, char* argv[])
 			string errorMessage("Error: Problem accepting client.");
 			cleanExit(1, errorMessage);
 		}
-		string ipString(ip);
+		string ipString(ipstr);
 
 		thread ssSockThread(handleConnectionThread, incomingSock);
 		ssSockThread.join();
 	}
-    
-    return 0;
+
+    	return 0;
 }
