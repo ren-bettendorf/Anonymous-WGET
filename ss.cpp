@@ -391,9 +391,12 @@ int main(int argc, char* argv[])
 			cleanExit(1, errorMessage);
 		}
 		string ipString(ipstr);
-		cout << "Connection from: " << clientAddr.sin_addr.s_addr << endl;
-		thread ssSockThread(handleConnectionThread, incomingSock);
-		ssSockThread.join();
+		char remoteIp[INET_ADDRSTRLEN];
+		inet_ntop(AF_INET, &(clientAddr.sin_addr), remoteIp, INET_ADDRSTRLEN);
+		cout << "Connection from: " << remoteIp << ":" << ntohs(clientAddr.sin_port) << endl;
+		handleConnectionThread(incomingSock);
+		//thread ssSockThread(handleConnectionThread, incomingSock);
+		//ssSockThread.join();
 	}
 
     	return 0;

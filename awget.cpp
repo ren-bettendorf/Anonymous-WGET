@@ -11,6 +11,13 @@
 #include <arpa/inet.h> 
 #include <ctype.h> 
 #include "awget.h"
+#include <vector>
+#include <boost/algorithm/string.hpp>
+#include <iostream>
+#include <fstream>
+
+using namespace boost;
+using namespace std;
 
 //----------COLLEEN---------------------------------------------------------
 #define FILENAME "index.html" 
@@ -30,162 +37,96 @@ int minimum(int a, int b) {
 //--------------------------------------------------------------------------- 
 int main(int argc, char *argv[]) 
 {
-    //int sockfd;
-    char *UrlBuf;
-    //Retrieve URL information from the command line argument
-    int urlSize;
-    char *tok;
-    size_t lineLen;
-    char *line;
-    size_t read;
-    
-    urlSize=sizeof(argv[1]);
-    int urlBufSize;
-    //Store the Url in a buffer for data packing later
-    UrlBuf= (char*)malloc((sizeof(char)*urlSize)+1);
-    if(NULL!=UrlBuf){
-        //copy UrlInfo to Buff: Required later to pack data
-        strcpy(UrlBuf,argv[1]);
-    }
-    //Debug
-    // printf("\n %s", UrlBuf);
-    
+    string url;
     //For second argument
-    FILE *fp;
     
     //-----COLLEEN: STEPS 1, 2, 4, 5, 6 and 7 OF CS457Project2_2017.pdf (pages 7 and 8)-----
     //a chain file was passed in
+	url = argv[1];
+	string file;
     if(argc == 3)
     {
-        fp = fopen(argv[2],"r");
+	file = argv[2];
     }
     //a chainfile has not been passed in
     else
     {
-        fp=fopen("chaingang.txt", "r");
-        
-        if(fp == NULL)
+	file = "chaingang.txt";
+        if(read == NULL)
         {
             printf("ERROR: awget failed to locate chainfile.txt");
             exit(0);
         }
     }
     //-------------------------------------------------------------------------------------
-    
+    ifstream read(file);
     //count the number of IP addresses and Ports in the text file
-    unsigned short numOfAddr=0;
-    char ch;
-    while(!feof(fp)){
-        ch=fgetc(fp);
-        if(ch=='\n'){
-            if((ch=fgetc(fp)!=' ')){
-                numOfAddr=numOfAddr+1;
-            }
-            else {break;}
-        }//end if
-    }//end of while line count
+    	unsigned short numOfAddr=0;
+	string chainLine;
+	vector<string> chainLines;
+    	while(getline(read, chainLine)){
+		chainLine = chainLine.replace(chainLine.find(" "), 1, ":");
+		chainLines.push_back(chainLine);
+		cout << "Adding " << chainLine << endl;
+    	}//end of while line count
+	numOfAddr = chainLines.size();
     //Debug
     // printf("\n Num of IP addresses=%d", numOfAddr);
-    fclose(fp);
+    	read.close();
+	cout << numOfAddr << endl;
+	for(int i = 0; i < chainLines.size(); i++)
+	{
+		cout << chainLines.at(i) << endl;
+	}
     //Generate a random number between 0 and numOfAddr;
-    int randIP;
-    randIP=rand()%numOfAddr;
+    int randIP = rand()%numOfAddr;
     //Debug
     // printf("\n Random IP address=%d", randIP);
-    
-    //Extarct the IP address and Port numner at randIP
-    lineLen=256;
-    int i;
-    char tempLine[256];//required later
-    line= (char*)malloc((sizeof(char)*lineLen)+1);
-    fp=fopen(argv[2],"r");
-    if(NULL!=fp) {
-        for(i=0;i<randIP;i++) {
-            read=getline(&line, &lineLen,fp);
-            strcpy(tempLine, line);
-        }
-    }
-    
-    //Extract IP address and the port number from the line
-    char *IP4, *port;
-    unsigned int intPort;
-    IP4=strtok(line," ");
-    
-    //-----COLLEEN: WHEN I ADD MY CODE TO YOURS THERE IS A SEG FAULT ON LINE 121)----
-    
-    port=strtok(NULL, " ");
-    //printf("\n IP4=%s", IP4);
-    //printf("\n Port=%s \n", port);
-    intPort=atoi(port);
-    
-    //printf("\n IntPort=%d", intPort);
-    fclose(fp);
-    //Pack IP address in to string
-    char *AddrBuf;
-    int sizeAddrBuf;
-    struct stat st;
-    if(stat(argv[2],&st)==0) {
-        //printf("\n File Size=%d",st.st_size);
-    }
-    sizeAddrBuf=(st.st_size)*2; //Extra Space;
-    //Allocate memory to
-    AddrBuf= (char*)malloc((sizeof(char)*sizeAddrBuf)+1);
-    if(NULL==AddrBuf) {
-        printf("\n Failed to allocate memory to AddrBuf");
-        exit(0);
-    } //End If
-    //clear memory
-    
-    //memset(&AddrBuf, 0, (sizeof(char)*sizeAddrBuf));
-    //unpack IP and Port
-    i=0;
-    char*getLine;
-    getLine= (char*)malloc((sizeof(char)*lineLen)+1);
-    fp=fopen(argv[2],"r");
-    while(i<numOfAddr){
-        //read the line
-        read=getline(&getLine, &lineLen,fp);
-        // printf("\n i=%d", i);
-        // printf("\n Line=%s: getline=%s", tempLine, getLine);
-        // NOT A CLEAN CODE: NEED TO CLEAN IT UP
-        if(NULL!=getLine){
-            if(strcmp(getLine, tempLine)!=0){
-                // printf("\n Not equal");
-                //extract IP4 and port
-                IP4=strtok(getLine, " ");
-                port=strtok(NULL, " ");
-                if(i==0){strcpy(AddrBuf,IP4);}
-                else{strcat(AddrBuf, IP4);}
-                strcat(AddrBuf, ":");
-                strcat(AddrBuf, port);
-                // sprintf(AddrBuf, "%s, %s", IP4,port);
-                
-            }//end if*/
-        }
-        i++;
-    }//END while */
-    //Create the socket and connect with the client//
-    int totalSize;
-    char *sendBuf;
-    totalSize=((sizeof(unsigned short)*3)+((strlen(AddrBuf))+strlen(UrlBuf))*sizeof(char));
 
-    sendBuf=(char*)malloc(totalSize+1);
-    if(NULL==sendBuf) {
-        printf("\n Failed to allocate the memory");
-        exit(0);
-    }
-	unsigned short wrap = htons(strlen(AddrBuf));
-    memcpy(sendBuf, &wrap, 2);
-	unsigned short wrapAgain = htons(strlen(UrlBuf));
-    memcpy(sendBuf + 2, &wrapAgain, 2);
+    //Extract IP address and the port number from the line
+
+	vector<string> ipAndPort;
+	cout << "Random Ip: " << randIP << endl;
+	string nextStone = chainLines.at(randIP);
+	cout << "First " << nextStone << endl;
+	chainLines.erase(chainLines.begin() + randIP);
+	cout << "Erased" << endl;
+	split(ipAndPort, nextStone, is_any_of(":"));
+	string IP4 = ipAndPort[0];
+	int port =  stoi(ipAndPort[1]);
+    	string chainlistStr("");
+	for(int i = 0; i < chainLines.size(); i++)
+	{
+		chainlistStr = chainlistStr + " " + chainLines.at(i);
+	}
+	cout << "Should be 1 address" << endl;
+	cout << "Chainlist: " << chainlistStr << endl;
+	trim(chainlistStr);
+	cout << "Trimmed: " << chainlistStr << endl;
+	//-----COLLEEN: WHEN I ADD MY CODE TO YOURS THERE IS A SEG FAULT ON LINE 121)----
+    //printf("\n IP4=%s", IP4);
+    //printf("\n Port=%s \n", port)
+    //printf("\n IntPort=%d", intPort);
+ 
+    //Create the socket and connect with the client//
+	cout << "Size: " << 6 + chainlistStr.length() + url.length() << endl;
+    char sendHeader[6];
+    char sendBuf[chainlistStr.length() + url.length()];
+	memset(sendHeader, 0, 6);
+	memset(sendBuf, 0, chainlistStr.length() + url.length());
+
+	unsigned short wrap = htons(chainlistStr.length());
+    memcpy(sendHeader, &wrap, 2);
+	unsigned short wrapAgain = htons(url.length());
+    memcpy(sendHeader + 2, &wrapAgain, 2);
    	unsigned short wrapThrice = htons(numOfAddr - 1); 
-   memcpy(sendBuf + 4, &wrapThrice, 2);
-   memcpy(sendBuf + 6, AddrBuf, strlen(AddrBuf));
-   memcpy(sendBuf + 6 + strlen(AddrBuf), UrlBuf, strlen(UrlBuf));
+   memcpy(sendHeader + 4, &wrapThrice, 2);
+   memcpy(sendBuf, chainlistStr.c_str(), chainlistStr.length());
+   memcpy(sendBuf + chainlistStr.length(), url.c_str(), url.length());
     //----------COLLEEN: We need to send URL and chainfile to the server-----------
     
     // //pack the data;
-       printf("PACKET: %hu, %hu, %hu, %s, %s",strlen(AddrBuf),strlen(UrlBuf),(numOfAddr-1),AddrBuf, UrlBuf);
+      // printf("PACKET: %hu, %hu, %hu, %s, %s",strlen(AddrBuf),strlen(UrlBuf),(numOfAddr-1),AddrBuf, UrlBuf);
 //      puts(sendBuf);
     // int sockfd;
     // struct socketAddressIN serverAddr;
@@ -235,9 +176,9 @@ int main(int argc, char *argv[])
     memset(&remoteAddress, 0, sizeof(remoteAddress));
     
     remoteAddress.sin_family = AF_INET;
-    remoteAddress.sin_addr.s_addr=inet_addr(IP4);
+    remoteAddress.sin_addr.s_addr=inet_addr(IP4.c_str());
     //inet_pton(AF_INET, IP4, &(remoteAddress.sin_addr));
-    remoteAddress.sin_port = htons(intPort);
+    remoteAddress.sin_port = htons(port);
     
     //create socket
     clientSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -256,8 +197,10 @@ int main(int argc, char *argv[])
     }
     //send packet to
    int sendBytes;
-   sendBytes=send(clientSocket, sendBuf, strlen(sendBuf), 0);
-   printf("\n sendBytes=%d", sendBytes);
+	sendBytes = send(clientSocket, sendHeader, 6, 0);
+	cout << "Sendbytes: " << sendBytes << endl;
+   sendBytes=send(clientSocket, sendBuf, url.length() + chainlistStr.length(), 0);
+   cout << "sendBytes: " << sendBytes << endl;;
     //receive file size
     recv(clientSocket, buffer, BUFSIZ, 0);
     fileSize = atoi(buffer);
