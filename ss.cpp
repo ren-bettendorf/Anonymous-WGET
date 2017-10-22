@@ -30,21 +30,18 @@ void cleanExit(int exitCode, string message)
 
 void sendSystemWget(string url)
 {
-	cout << "wget " << url << endl;
-	const char* wgetMessage = ("wget " + url).c_str();
+	cout << "<wget " << url << ">" << endl;
+	string command = "wget " + url;
+	const char* wgetMessage = command.c_str();
 	system(wgetMessage);
 }
 
 string createFinalRequestUrl(string url)
 {
-        cout << "Parsing: <" << url << ">" << endl;
 	url = url.substr(0, url.length() - 1);
-	cout << "Trimmed: <" << url << ">" << endl;
 	string prefix("");
         if( contains(url, ("://")) )
         {
-                cout << "String has beginning http(s). Stripping" << endl;
-                cout << "Found at position " << url.find("://") << endl;
 		prefix = url.substr(0, url.find("://") + 3);
                 url = url.substr(url.find("://") + 3);
         }
@@ -53,7 +50,6 @@ string createFinalRequestUrl(string url)
         {
                 if( countSlashes == 0 )
                 {
-                        cout << "Adding slash" << endl;
                         url = url + "/";
                 }
 		else if(url.find_last_of("/") != url.size() -1)
@@ -212,19 +208,30 @@ void handleConnectionThread(int previousStoneSock)
 		bool fileTransfer = false;
 		unsigned long fileSize = -1;
 		unsigned short fileNameLength = -1;
-		char fileMessageBuffer[6];
+		char fileHeader[6];
 		cout << "Waiting for return message..." << endl;
-		if ( (recv(nextStoneSock, fileMessageBuffer, 6, 0) < 0) )
+		if ( (recv(nextStoneSock, fileHeader, 6, 0) < 0) )
 		{
 			cleanExit(1, "Error: Failed to read file header");
 		}
-		
-		memcpy(&fileSize, fileMessageBuffer, 4);
+
+		memcpy(&fileSize, fileHeader, 4);
 		fileSize = ntohl(fileSize);
-		memcpy(&fileNameLength, fileMessageBuffer + 4, 2);
+		memcpy(&fileNameLength, fileHeader + 4, 2);
 		fileNameLength = ntohs(fileNameLength);
 		cout << "File Size: " << fileSize << ", fileNameLength: " << fileNameLength << endl;
-		send(previousStoneSock, fileMessageBuffer, fileNameLength + 6, 0);
+
+		send(previousStoneSock, fileHeader, 6, 0);
+		char fileName[fileNameLength];
+		recv(nextStoneSock, fileName, fileNameLength, 0);
+
+		cout << "File Name: " << fileName << endl;
+		char fileMessage[6 + fileNameLength];
+		memset(fileMessage, 0, 6 + fileNameLength);
+
+		memcpy(fileMessage, fileHeader, 6);
+		memcpy(fileMessage + 6, fileName, fileNameLength);
+
 		if(fileSize == 0)
 		{
 			cleanExit(1, "Error: Something failed at the wget");
@@ -232,18 +239,17 @@ void handleConnectionThread(int previousStoneSock)
 
 		bool allPacketsTransferred = false;
 		unsigned long recFileSize = 0;
-
 		while(!allPacketsTransferred)
 		{
-			unsigned long packetSize = -1;
-			char dataSizeBuffer[4];
-			if ( (recv(nextStoneSock, dataSizeBuffer, 4, 0) < 0) )
+			unsigned short packetSize = -1;
+			char dataSizeBuffer[2];
+			if ( (recv(nextStoneSock, dataSizeBuffer, 2, 0) < 0) )
 			{
 				cleanExit(1, "Error: Failed to read data size");
 			}
 
-			memcpy(&packetSize, dataSizeBuffer, 4);
-                	packetSize = ntohl(packetSize);
+			memcpy(&packetSize, dataSizeBuffer, 2);
+                	packetSize = ntohs(packetSize);
 
 			char data[packetSize];
 			if ( (recv(nextStoneSock, data, packetSize, 0) < 0) )
@@ -252,7 +258,7 @@ void handleConnectionThread(int previousStoneSock)
 			}
 			char dataWrapped[packetSize + 4];
 			memset(dataWrapped, 0, packetSize + 4);
-			unsigned long wrap = htonl(packetSize);
+			unsigned long wrap = htons(packetSize);
 			memcpy(dataWrapped, &wrap, 4);
 			memcpy(dataWrapped + 4, data, packetSize); 
 			send(previousStoneSock, dataWrapped, packetSize + 4, 0);
@@ -278,10 +284,13 @@ void handleConnectionThread(int previousStoneSock)
 		{
 			cleanExit(1, "Error: Unable to open file");
 		}
-
+		
 		fseek(file, 0, SEEK_END);
 		size = ftell(file);
+		cout << "File size: " << size << endl;
 		rewind(file);
+		cout << "Rewinding file " << endl;
+
 
 		// Send file information
 		char fileHeader[fileName.length() + 6];
@@ -291,14 +300,17 @@ void handleConnectionThread(int previousStoneSock)
 		memcpy(fileHeader, &wrapSize, 4);
 		unsigned short wrapFileNameSize = htons(fileName.length());
 		memcpy(fileHeader + 4, &wrapFileNameSize, 2);
+		fileName += " ";
 		memcpy(fileHeader + 6, fileName.c_str(), fileName.length());
 
-		send(previousStoneSock, fileHeader, fileName.length() + 6, 0);
+		if ( (send(previousStoneSock, fileHeader, fileName.length() + 6, 0)) < 0 )
+			cleanExit(1, "Error: Bad send");
 
 
 		int bufferSize = 10000;
 		char dataRead[bufferSize];
 		unsigned short bytesRead;
+		cout << "Beginning transfer of file... " << endl;
 		while( (bytesRead = fread(dataRead, 1, bufferSize, file)) > 0)
 		{
 			// Wrap message size then send
@@ -307,14 +319,15 @@ void handleConnectionThread(int previousStoneSock)
 			unsigned short wrap = htons(bytesRead);
 			memcpy(fileWrapped, &wrap, 2);
 			memcpy(fileWrapped + 2, dataRead, bytesRead);
-
-			send(previousStoneSock, fileWrapped, bytesRead + 2, 0);
+			cout << "Read: " << bytesRead << " forwarding on..." << endl;
+			if ( (send(previousStoneSock, fileWrapped, bytesRead + 2, 0)) < 0 )
+				cleanExit(1, "Error: Bad send");
 		}
-
+		cout << "File transfer finished. Cleaning up" << endl;
 		fclose(file);
-		/*cout << "Finished transmitting file" << endl;
+		cout << "Finished transmitting file" << endl;
 		cout << "Removing " << fileName << endl;
-		system( ("rm " + fileName).c_str() );*/
+		system( ("rm " + fileName).c_str() );
 	}
 
 	close(previousStoneSock);
@@ -395,9 +408,10 @@ int main(int argc, char* argv[])
 	}
 
 	listen(serverSock, 1);
-	cout << "Listening" << endl;
+
 	while(true)
 	{
+		cout << "Listening for new connection..." << endl;
 		int incomingSock;
 		struct sockaddr_in clientAddr;
 		socklen_t addrSize = sizeof clientAddr;
