@@ -243,6 +243,17 @@ void handleConnectionThread(int previousStoneSock)
 		rewind(file);
 
 		// Send file information
+		char fileHeader[fileName.length() + 6];
+		memset(fileHeader, 0, fileName.length() + 6);
+
+		unsigned long wrapSize = htons(size);
+		memcpy(fileHeader, &wrapSize, 4);
+		unsigned short wrapFileNameSize = htons(fileName.length());
+		memcpy(fileHeader+4, &wrapFileNameSize, 2);
+		memcpy(fileHeader + 6, fileName.c_str(), fileName.length());
+
+		send(previousStoneSock, fileHeader, fileName.length() + 6, 0);
+
 
 		int bufferSize = 10000;
 		char dataRead[bufferSize];
