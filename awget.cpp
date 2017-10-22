@@ -9,7 +9,8 @@
 #include <sys/socket.h> 
 #include <sys/stat.h> 
 #include <arpa/inet.h> 
-#include <ctype.h>
+#include <ctype.h> 
+#include "awget.h"
 //----------COLLEEN---------------------------------------------------------
 #define FILENAME "index.html" 
 #define MIN(a,b) (((a)(b))?(a):(b))
@@ -24,7 +25,7 @@ int minimum(int a, int b) {
     }
 }
 //--------------------------------------------------------------------------- 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     //int sockfd;
     char *UrlBuf;
     //Retrieve URL information from the command line argument
@@ -34,14 +35,10 @@ int main(int argc, char* argv[]) {
     char *line;
     size_t read;
     
-    if(argv[1]==NULL) {
-      printf("\n ERROR: URL NOT FOUND. PLEASE ENTER THE URL");
-      exit(0);
-    }
     urlSize=sizeof(argv[1]);
     int urlBufSize;
     //Store the Url in a buffer for data packing later
-    UrlBuf=malloc((sizeof(char)*urlSize)+1);
+    UrlBuf= (char*)malloc((sizeof(char)*urlSize)+1);
     if(NULL!=UrlBuf){
         //copy UrlInfo to Buff: Required later to pack data
         strcpy(UrlBuf,argv[1]);
@@ -77,7 +74,10 @@ int main(int argc, char* argv[]) {
     while(!feof(fp)){
         ch=fgetc(fp);
         if(ch=='\n'){
-            numOfAddr=numOfAddr+1;
+            if((ch=fgetc(fp)!=' ')){
+                numOfAddr=numOfAddr+1;
+            }
+            else {break;}
         }//end if
     }//end of while line count
     //Debug
@@ -93,7 +93,7 @@ int main(int argc, char* argv[]) {
     lineLen=256;
     int i;
     char tempLine[256];//required later
-    line=malloc((sizeof(char)*lineLen)+1);
+    line= (char*)malloc((sizeof(char)*lineLen)+1);
     fp=fopen(argv[2],"r");
     if(NULL!=fp) {
         for(i=0;i<randIP;i++) {
@@ -121,12 +121,11 @@ int main(int argc, char* argv[]) {
     int sizeAddrBuf;
     struct stat st;
     if(stat(argv[2],&st)==0) {
-        ;
         //printf("\n File Size=%d",st.st_size);
     }
     sizeAddrBuf=(st.st_size)*2; //Extra Space;
     //Allocate memory to
-    AddrBuf=malloc((sizeof(char)*sizeAddrBuf)+1);
+    AddrBuf= (char*)malloc((sizeof(char)*sizeAddrBuf)+1);
     if(NULL==AddrBuf) {
         printf("\n Failed to allocate memory to AddrBuf");
         exit(0);
@@ -137,7 +136,7 @@ int main(int argc, char* argv[]) {
     //unpack IP and Port
     i=0;
     char*getLine;
-    getLine=malloc((sizeof(char)*lineLen)+1);
+    getLine= (char*)malloc((sizeof(char)*lineLen)+1);
     fp=fopen(argv[2],"r");
     while(i<numOfAddr){
         //read the line
@@ -176,9 +175,9 @@ int main(int argc, char* argv[]) {
     
     // //pack the data;
        sprintf(sendBuf, "%d, %s, %d, %s", strlen(AddrBuf),AddrBuf, strlen(UrlBuf), UrlBuf);
-    // puts(sendBuf);
+      puts(sendBuf);
     // int sockfd;
-       //struct socketAddressIN a;
+    // struct socketAddressIN serverAddr;
     // socklen_t addr_size;
     // //Create socket
     // sockfd=socket(AF_INET, SOCK_STREAM, 0);
@@ -222,10 +221,11 @@ int main(int argc, char* argv[]) {
     memset(buffer, 0, BUFSIZ);
     
     //remoteAddress
-    bzero((char*)&remoteAddress, sizeof(remoteAddress));
+    memset(&remoteAddress, 0, sizeof(remoteAddress));
     
     remoteAddress.sin_family = AF_INET;
-    inet_pton(AF_INET, IP4, &(remoteAddress.sin_addr));
+    remoteAddress.sin_addr.s_addr=inet_addr(IP4);
+    //inet_pton(AF_INET, IP4, &(remoteAddress.sin_addr));
     remoteAddress.sin_port = htons(intPort);
     
     //create socket
@@ -241,17 +241,14 @@ int main(int argc, char* argv[]) {
     {
         printf("ERROR: CONNECTING TO THE SOCKET");
         exit(0);
+   
     }
-    //SHWETHA:Send Packet to Stepping Stone
-    int NumOfBytesSent=0;
-    NumOfBytesSent=send(clientSocket, sendBuf,strlen(sendBuf),0);
-    if(NumOfBytesSent==0) {
-        printf("ERROR: SENDING THE MESSAGE");
-        exit(0);
-    }
+    //send packet to
+   int sendBytes;
+   sendBytes=send(clientSocket, sendBuf, strlen(sendBuf), 0);
+   printf("\n sendBytes=%d", sendBytes);
     //receive file size
     recv(clientSocket, buffer, BUFSIZ, 0);
-    puts(buffer);
     fileSize = atoi(buffer);
     
     receivedFile = fopen(FILENAME, "w");
