@@ -95,7 +95,8 @@ int main(int argc, char *argv[])
 	{
 		chainlistStr = chainlistStr + " " + chainLines.at(i);
 	}
-	trim(chainlistStr);
+	chainlistStr += " ";
+	url += " ";
 	//-----COLLEEN: WHEN I ADD MY CODE TO YOURS THERE IS A SEG FAULT ON LINE 121)----
     //printf("\n IP4=%s", IP4);
     //printf("\n Port=%s \n", port)
@@ -107,15 +108,15 @@ int main(int argc, char *argv[])
     char sendBuf[chainlistStr.length() + url.length() ];
 	memset(sendHeader, 0, 6);
 	memset(sendBuf, 0, chainlistStr.length() + url.length());
-
+	cout << chainlistStr.length() << " " << strlen(chainlistStr.c_str()) << endl;
 	unsigned short wrap = htons(chainlistStr.length());
     memcpy(sendHeader, &wrap, 2);
 	unsigned short wrapAgain = htons(url.length());
     memcpy(sendHeader + 2, &wrapAgain, 2);
    	unsigned short wrapThrice = htons(numOfAddr - 1); 
    memcpy(sendHeader + 4, &wrapThrice, 2);
-	cout << chainlistStr << " " << chainlistStr.c_str() << endl;
-	cout << url << " " << url.c_str() << endl;
+	cout << chainlistStr << endl;
+	cout << url << endl;
    memcpy(sendBuf, chainlistStr.c_str(), chainlistStr.length());
    memcpy(sendBuf + chainlistStr.length(), url.c_str(), url.length());
     //----------COLLEEN: We need to send URL and chainfile to the server-----------

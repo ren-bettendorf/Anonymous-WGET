@@ -37,7 +37,9 @@ void sendSystemWget(string url)
 
 string createFinalRequestUrl(string url)
 {
-        cout << "Parsing: " << url << endl;
+        cout << "Parsing: <" << url << ">" << endl;
+	url = url.substr(0, url.length() - 1);
+	cout << "Trimmed: <" << url << ">" << endl;
 	string prefix("");
         if( contains(url, ("://")) )
         {
@@ -68,7 +70,6 @@ string createFinalRequestUrl(string url)
 string parseFileName(string url)
 {
 	return url.substr(url.find_last_of("/") + 1);
-
 }
 
 vector<string> splitChainlistFromLastStone(char* chainlistChar)
@@ -94,13 +95,9 @@ int selectRandomStoneIndex(int max)
 int connectToNextStone(string ip, int port)
 {
 	struct sockaddr_in nextStoneAddr;
-	if(contains(ip, "@"))
-	{
-		cout << "FOUND IT" << endl;
-	}
 	nextStoneAddr.sin_family = AF_INET;
-        nextStoneAddr.sin_addr.s_addr = inet_addr(ip.c_str());
-       	nextStoneAddr.sin_port = htons(port);
+	inet_pton(AF_INET, ip.c_str(), &nextStoneAddr.sin_addr.s_addr);
+	nextStoneAddr.sin_port = htons(port);
 	int nextStoneSock;
 
         if ( (nextStoneSock = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
@@ -108,7 +105,7 @@ int connectToNextStone(string ip, int port)
                 string errorMessage("Error: Unable to open socket");
                 cleanExit(1, errorMessage);
         }
-        if ( (bind(nextStoneSock, (struct sockaddr*)&nextStoneAddr, sizeof(nextStoneAddr))) < 0 )
+        if ( (connect(nextStoneSock, (struct sockaddr*)&nextStoneAddr, sizeof(nextStoneAddr))) < 0 )
         {
                 string errorMessage("Error: Unable to bind socket");
                 cleanExit(1, errorMessage);
@@ -158,12 +155,11 @@ void handleConnectionThread(int previousStoneSock)
 		cleanExit(1, "Error: recv failed");
 	}
 
-	char chainlist[packetInfo.chainlistLength];
+	char chainlist[packetInfo.chainlistLength + 1];
 	memcpy(chainlist, messageBuffer, packetInfo.chainlistLength);
-	string temp(chainlist);
-	cout << "Chainlist: " << chainlist << " " << temp << endl;
+	cout << "Chainlist: " << chainlist << endl;
 
-	char url[packetInfo.urlLength];
+	char url[packetInfo.urlLength + 1];
 	memcpy(url, messageBuffer + packetInfo.chainlistLength, packetInfo.urlLength);
 	cout << "url: " << url << endl;
 
@@ -182,6 +178,9 @@ void handleConnectionThread(int previousStoneSock)
 
 		vector<string> nextStoneIpAndPort;
 		split(nextStoneIpAndPort, nextStone, is_any_of(":"));
+		for(int i = 0; i < 2; i++)
+			cout << nextStoneIpAndPort[i] << endl;
+
 		nextStoneSock = connectToNextStone(nextStoneIpAndPort[0], stoi(nextStoneIpAndPort[1]));
 
 		string combineChainlist("");
@@ -189,31 +188,42 @@ void handleConnectionThread(int previousStoneSock)
 		{
 			combineChainlist = combineChainlist + " " + chainlistSplit.at(i) ;
 		}
-		char chainlistPacket[packetInfo.urlLength + combineChainlist.length() + 6];
-		memset(chainlistPacket, 0, packetInfo.urlLength + combineChainlist.length() + 6);
 
-		unsigned short wrapChainlistSize = htons(packetInfo.chainlistLength - 1);
-		memcpy(chainlistPacket, &wrapChainlistSize, 2);
-		memcpy(chainlistPacket + 2, &sizeUrl, 2);
+		cout << endl << "New chainlist: " << combineChainlist << endl;
+		char chainlistHeader[6];
+		char chainlistPacket[packetInfo.urlLength + combineChainlist.length()];
+		memset(chainlistHeader, 0, 6);
+		memset(chainlistPacket, 0, packetInfo.urlLength + combineChainlist.length());
+
+		unsigned short wrapChainlistSize = htons(combineChainlist.length());
+		memcpy(chainlistHeader, &wrapChainlistSize, 2);
+		memcpy(chainlistHeader + 2, &sizeUrl, 2);
 		unsigned short wrapNumber = htons(chainlistSplit.size());
-		memcpy(chainlistPacket + 4, &wrapNumber, 2);
-		memcpy(chainlistPacket + 6, combineChainlist.c_str(), combineChainlist.length());
-		memcpy(chainlistPacket + 6 + combineChainlist.length(), url, packetInfo.urlLength);
-
-		send(nextStoneSock, chainlistPacket, packetInfo.urlLength + combineChainlist.length() + 6, 0);
+		memcpy(chainlistHeader + 4, &wrapNumber, 2);
+		memcpy(chainlistPacket, combineChainlist.c_str(), combineChainlist.length());
+		memcpy(chainlistPacket + combineChainlist.length(), url, packetInfo.urlLength);
+		cout << "Sending chainlistHeader" << endl;
+		if ( (send(nextStoneSock, chainlistHeader, 6, 0)) < 0)
+			cout << "Error: Bad send" << endl;
+		cout << "Sending chainlist and url" << endl;
+		if ( (send(nextStoneSock, chainlistPacket, packetInfo.urlLength + combineChainlist.length(), 0)) < 0)
+			cout << "Error: Bad send" << endl;
 
 		bool fileTransfer = false;
 		unsigned long fileSize = -1;
 		unsigned short fileNameLength = -1;
 		char fileMessageBuffer[6];
+		cout << "Waiting for return message..." << endl;
 		if ( (recv(nextStoneSock, fileMessageBuffer, 6, 0) < 0) )
 		{
 			cleanExit(1, "Error: Failed to read file header");
 		}
-
+		
 		memcpy(&fileSize, fileMessageBuffer, 4);
 		fileSize = ntohl(fileSize);
-
+		memcpy(&fileNameLength, fileMessageBuffer + 4, 2);
+		fileNameLength = ntohs(fileNameLength);
+		cout << "File Size: " << fileSize << ", fileNameLength: " << fileNameLength << endl;
 		send(previousStoneSock, fileMessageBuffer, fileNameLength + 6, 0);
 		if(fileSize == 0)
 		{
@@ -262,8 +272,8 @@ void handleConnectionThread(int previousStoneSock)
 		string fileName = parseFileName(requestUrl);
 
 		sendSystemWget(requestUrl);
-
-		file = fopen(fileName.c_str(), "r");
+		cout << "opening <" << fileName.c_str() << ">" << endl;
+		file = fopen(fileName.c_str(), "rb");
 		if(file == NULL)
 		{
 			cleanExit(1, "Error: Unable to open file");
@@ -302,9 +312,9 @@ void handleConnectionThread(int previousStoneSock)
 		}
 
 		fclose(file);
-		cout << "Finished transmitting file" << endl;
+		/*cout << "Finished transmitting file" << endl;
 		cout << "Removing " << fileName << endl;
-		system( ("rm " + fileName).c_str() );
+		system( ("rm " + fileName).c_str() );*/
 	}
 
 	close(previousStoneSock);
@@ -385,7 +395,7 @@ int main(int argc, char* argv[])
 	}
 
 	listen(serverSock, 1);
-
+	cout << "Listening" << endl;
 	while(true)
 	{
 		int incomingSock;
@@ -400,9 +410,9 @@ int main(int argc, char* argv[])
 		char remoteIp[INET_ADDRSTRLEN];
 		inet_ntop(AF_INET, &(clientAddr.sin_addr), remoteIp, INET_ADDRSTRLEN);
 		cout << "Connection from: " << remoteIp << ":" << ntohs(clientAddr.sin_port) << endl;
-		handleConnectionThread(incomingSock);
-		//thread ssSockThread(handleConnectionThread, incomingSock);
-		//ssSockThread.join();
+		//handleConnectionThread(incomingSock);
+		thread ssSockThread(handleConnectionThread, incomingSock);
+		ssSockThread.join();
 	}
 
     	return 0;
