@@ -108,13 +108,13 @@ int main(int argc, char *argv[])
 	memset(sendHeader, 0, 6);
 	memset(sendBuf, 0, chainlistStr.length() + url.length());
 
-	unsigned short wrap = htons(chainlistStr.length() * sizeof(char));
+	unsigned short wrap = htons(chainlistStr.length());
     memcpy(sendHeader, &wrap, 2);
-	unsigned short wrapAgain = htons(url.length() * sizeof(char));
+	unsigned short wrapAgain = htons(url.length());
     memcpy(sendHeader + 2, &wrapAgain, 2);
    	unsigned short wrapThrice = htons(numOfAddr - 1); 
    memcpy(sendHeader + 4, &wrapThrice, 2);
-	cout << "Size: " << chainlistStr.length() * sizeof(char) << chainlistStr << " " << chainlistStr.c_str() << endl;
+	cout << chainlistStr << " " << chainlistStr.c_str() << endl;
 	cout << url << " " << url.c_str() << endl;
    memcpy(sendBuf, chainlistStr.c_str(), chainlistStr.length());
    memcpy(sendBuf + chainlistStr.length(), url.c_str(), url.length());
