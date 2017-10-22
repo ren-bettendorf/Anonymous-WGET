@@ -94,7 +94,10 @@ int selectRandomStoneIndex(int max)
 int connectToNextStone(string ip, int port)
 {
 	struct sockaddr_in nextStoneAddr;
-
+	if(contains(ip, "@"))
+	{
+		cout << "FOUND IT" << endl;
+	}
 	nextStoneAddr.sin_family = AF_INET;
         nextStoneAddr.sin_addr.s_addr = inet_addr(ip.c_str());
        	nextStoneAddr.sin_port = htons(port);
@@ -133,7 +136,7 @@ void handleConnectionThread(int previousStoneSock)
 	{
 		cleanExit(1, "Error: recv failed");
 	}
-
+	cout << endl << endl;
 	unsigned short sizeChainlist = -1;
 	memcpy(&sizeChainlist, messageHeaderBuffer, 2);
 	packetInfo.chainlistLength = ntohs(sizeChainlist);
@@ -157,9 +160,12 @@ void handleConnectionThread(int previousStoneSock)
 
 	char chainlist[packetInfo.chainlistLength];
 	memcpy(chainlist, messageBuffer, packetInfo.chainlistLength);
+	string temp(chainlist);
+	cout << "Chainlist: " << chainlist << " " << temp << endl;
 
 	char url[packetInfo.urlLength];
-	memcpy(url, messageBuffer + packetInfo.urlLength, sizeUrl);
+	memcpy(url, messageBuffer + packetInfo.chainlistLength, packetInfo.urlLength);
+	cout << "url: " << url << endl;
 
 	if(packetInfo.numberChainlist > 0)
 	{

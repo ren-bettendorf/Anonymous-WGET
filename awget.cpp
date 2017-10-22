@@ -67,7 +67,6 @@ int main(int argc, char *argv[])
     	while(getline(read, chainLine)){
 		chainLine = chainLine.replace(chainLine.find(" "), 1, ":");
 		chainLines.push_back(chainLine);
-		cout << "Adding " << chainLine << endl;
     	}//end of while line count
 	numOfAddr = chainLines.size();
     //Debug
@@ -86,11 +85,8 @@ int main(int argc, char *argv[])
     //Extract IP address and the port number from the line
 
 	vector<string> ipAndPort;
-	cout << "Random Ip: " << randIP << endl;
 	string nextStone = chainLines.at(randIP);
-	cout << "First " << nextStone << endl;
 	chainLines.erase(chainLines.begin() + randIP);
-	cout << "Erased" << endl;
 	split(ipAndPort, nextStone, is_any_of(":"));
 	string IP4 = ipAndPort[0];
 	int port =  stoi(ipAndPort[1]);
@@ -99,10 +95,7 @@ int main(int argc, char *argv[])
 	{
 		chainlistStr = chainlistStr + " " + chainLines.at(i);
 	}
-	cout << "Should be 1 address" << endl;
-	cout << "Chainlist: " << chainlistStr << endl;
 	trim(chainlistStr);
-	cout << "Trimmed: " << chainlistStr << endl;
 	//-----COLLEEN: WHEN I ADD MY CODE TO YOURS THERE IS A SEG FAULT ON LINE 121)----
     //printf("\n IP4=%s", IP4);
     //printf("\n Port=%s \n", port)
@@ -111,16 +104,18 @@ int main(int argc, char *argv[])
     //Create the socket and connect with the client//
 	cout << "Size: " << 6 + chainlistStr.length() + url.length() << endl;
     char sendHeader[6];
-    char sendBuf[chainlistStr.length() + url.length()];
+    char sendBuf[chainlistStr.length() + url.length() ];
 	memset(sendHeader, 0, 6);
 	memset(sendBuf, 0, chainlistStr.length() + url.length());
 
-	unsigned short wrap = htons(chainlistStr.length());
+	unsigned short wrap = htons(chainlistStr.length() * sizeof(char));
     memcpy(sendHeader, &wrap, 2);
-	unsigned short wrapAgain = htons(url.length());
+	unsigned short wrapAgain = htons(url.length() * sizeof(char));
     memcpy(sendHeader + 2, &wrapAgain, 2);
    	unsigned short wrapThrice = htons(numOfAddr - 1); 
    memcpy(sendHeader + 4, &wrapThrice, 2);
+	cout << "Size: " << chainlistStr.length() * sizeof(char) << chainlistStr << " " << chainlistStr.c_str() << endl;
+	cout << url << " " << url.c_str() << endl;
    memcpy(sendBuf, chainlistStr.c_str(), chainlistStr.length());
    memcpy(sendBuf + chainlistStr.length(), url.c_str(), url.length());
     //----------COLLEEN: We need to send URL and chainfile to the server-----------
