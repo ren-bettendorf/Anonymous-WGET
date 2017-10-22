@@ -1,19 +1,33 @@
-#include <stdio.h> 
-#include <stdlib.h> 
-#include <unistd.h> 
-#include <errno.h> 
-#include <string.h> 
-#include <netdb.h> 
-#include <sys/types.h> 
-#include <netinet/in.h> 
-#include <sys/socket.h> 
-#include <sys/stat.h> 
-#include <arpa/inet.h> 
-#include <ctype.h> 
+#include <stdio.h>
+
+#include <stdlib.h>
+
+#include <unistd.h>
+
+#include <errno.h>
+
+#include <string.h>
+
+#include <netdb.h>
+
+#include <sys/types.h>
+
+#include <netinet/in.h>
+
+#include <sys/socket.h>
+
+#include <sys/stat.h>
+
+#include <arpa/inet.h>
+
+#include <ctype.h>
+
 #include "awget.h"
 
 //----------COLLEEN---------------------------------------------------------
-#define FILENAME "index.html" 
+
+#define FILENAME "index.html"
+
 #define MIN(a,b) (((a)(b))?(a):(b))
 
 int minimum(int a, int b) {
@@ -26,7 +40,8 @@ int minimum(int a, int b) {
         return a;
     }
 }
-//--------------------------------------------------------------------------- 
+
+//---------------------------------------------------------------------------
 
 int main(int argc, char *argv[]) {
     //int sockfd;
@@ -72,7 +87,7 @@ int main(int argc, char *argv[]) {
     //-------------------------------------------------------------------------------------
     
     //count the number of IP addresses and Ports in the text file
-    int numOfAddr=0;
+    unsigned short numOfAddr=0;
     char ch;
     while(!feof(fp)){
         ch=fgetc(fp);
@@ -84,7 +99,7 @@ int main(int argc, char *argv[]) {
         }//end if
     }//end of while line count
     //Debug
-    printf("\n Num of IP addresses=%d", numOfAddr);
+    // printf("\n Num of IP addresses=%d", numOfAddr);
     fclose(fp);
     //Generate a random number between 0 and numOfAddr;
     int randIP;
@@ -113,8 +128,8 @@ int main(int argc, char *argv[]) {
     //-----COLLEEN: WHEN I ADD MY CODE TO YOURS THERE IS A SEG FAULT ON LINE 121)----
     
     port=strtok(NULL, " ");
-    printf("\n IP4=%s", IP4);
-    printf("\n Port=%s \n", port);
+    //printf("\n IP4=%s", IP4);
+    //printf("\n Port=%s \n", port);
     intPort=atoi(port);
     
     //printf("\n IntPort=%d", intPort);
@@ -124,13 +139,13 @@ int main(int argc, char *argv[]) {
     int sizeAddrBuf;
     struct stat st;
     if(stat(argv[2],&st)==0) {
-        printf("\n File Size=%d",st.st_size);
+        //printf("\n File Size=%d",st.st_size);
     }
     sizeAddrBuf=(st.st_size)*2; //Extra Space;
     //Allocate memory to
     AddrBuf= (char*)malloc((sizeof(char)*sizeAddrBuf)+1);
     if(NULL==AddrBuf) {
-        printf("\n Failed to allocate memory to AddrBuf\n\n");
+        printf("\n Failed to allocate memory to AddrBuf");
         exit(0);
     } //End If
     //clear memory
@@ -144,12 +159,12 @@ int main(int argc, char *argv[]) {
     while(i<numOfAddr){
         //read the line
         read=getline(&getLine, &lineLen,fp);
-        printf("\n i=%d", i);
-        printf("\n Line=%s: getline=%s", tempLine, getLine);
+        // printf("\n i=%d", i);
+        // printf("\n Line=%s: getline=%s", tempLine, getLine);
         // NOT A CLEAN CODE: NEED TO CLEAN IT UP
         if(NULL!=getLine){
             if(strcmp(getLine, tempLine)!=0){
-                printf("\n Not equal");
+                // printf("\n Not equal");
                 //extract IP4 and port
                 IP4=strtok(getLine, " ");
                 port=strtok(NULL, " ");
@@ -157,7 +172,7 @@ int main(int argc, char *argv[]) {
                 else{strcat(AddrBuf, IP4);}
                 strcat(AddrBuf, ":");
                 strcat(AddrBuf, port);
-                sprintf(AddrBuf, "%s, %s", IP4,port);
+                // sprintf(AddrBuf, "%s, %s", IP4,port);
                 
             }//end if*/
         }
@@ -166,19 +181,19 @@ int main(int argc, char *argv[]) {
     //Create the socket and connect with the client//
     int totalSize;
     char *sendBuf;
-    totalSize=((sizeof(int)*2)+((strlen(AddrBuf))+strlen(UrlBuf))*sizeof(char));
+    totalSize=((sizeof(unsigned short)*3)+((strlen(AddrBuf))+strlen(UrlBuf))*sizeof(char));
     
     sendBuf=(char*)malloc(totalSize+1);
     if(NULL==sendBuf) {
-        printf("\n Failed to allocate the memory\n\n");
+        printf("\n Failed to allocate the memory");
         exit(0);
     }
     
     //----------COLLEEN: We need to send URL and chainfile to the server-----------
     
     // //pack the data;
-    sprintf(sendBuf, "%d, %s, %d, %s", strlen(AddrBuf),AddrBuf, strlen(UrlBuf), UrlBuf);
-    puts(sendBuf);
+       sprintf(sendBuf, "%hu,%hu, %hu, %s, %s", strlen(AddrBuf),strlen(UrlBuf),(numOfAddr-1),AddrBuf, UrlBuf);
+      puts(sendBuf);
     // int sockfd;
     // struct socketAddressIN serverAddr;
     // socklen_t addr_size;
@@ -227,7 +242,6 @@ int main(int argc, char *argv[]) {
     memset(&remoteAddress, 0, sizeof(remoteAddress));
     
     remoteAddress.sin_family = AF_INET;
-    printf("\n\nConnecting to : %s:%d\n\n", IP4, intPort);
     remoteAddress.sin_addr.s_addr=inet_addr(IP4);
     //inet_pton(AF_INET, IP4, &(remoteAddress.sin_addr));
     remoteAddress.sin_port = htons(intPort);
@@ -236,14 +250,14 @@ int main(int argc, char *argv[]) {
     clientSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (clientSocket == -1)
     {
-        printf("ERROR: CREATING THE SOCKET\n\n");
+        printf("ERROR: CREATING THE SOCKET");
         exit(0);
     }
     
     //connect
     if (connect(clientSocket, (struct sockaddr *)&remoteAddress, sizeof(struct sockaddr)) == -1)
     {
-        printf("ERROR: CONNECTING TO THE SOCKET\n\n");
+        printf("ERROR: CONNECTING TO THE SOCKET");
         exit(0);
    
     }

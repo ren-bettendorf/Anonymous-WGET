@@ -137,15 +137,17 @@ void handleConnectionThread(int previousStoneSock)
 	unsigned short sizeChainlist = -1;
 	memcpy(&sizeChainlist, messageHeaderBuffer, 2);
 	packetInfo.chainlistLength = ntohs(sizeChainlist);
-
+	cout << "Chainlist Length: " << packetInfo.chainlistLength << endl;
 	unsigned short sizeUrl = -1;
 	memcpy(&sizeUrl, messageHeaderBuffer + 2, 2);
 	packetInfo.urlLength = ntohs(sizeUrl);
+	cout << "Url Length: " << packetInfo.urlLength << endl;
 
 	unsigned short numStonesLeft = -1;
 	memcpy(&numStonesLeft, messageHeaderBuffer + 4, 2);
 	numStonesLeft = ntohs(numStonesLeft);
 	packetInfo.numberChainlist = numStonesLeft;
+	cout << "Number Addresses: " << packetInfo.numberChainlist << endl;
 
 	char messageBuffer[packetInfo.urlLength + packetInfo.chainlistLength];
 	if ( recv(previousStoneSock, messageBuffer, packetInfo.urlLength + packetInfo.chainlistLength, 0) < 0 )
@@ -204,7 +206,7 @@ void handleConnectionThread(int previousStoneSock)
 		}
 
 		memcpy(&fileSize, fileMessageBuffer, 4);
-		fileSize = ntohs(fileSize);
+		fileSize = ntohl(fileSize);
 
 		send(previousStoneSock, fileMessageBuffer, fileNameLength + 6, 0);
 		if(fileSize == 0)
@@ -225,7 +227,7 @@ void handleConnectionThread(int previousStoneSock)
 			}
 
 			memcpy(&packetSize, dataSizeBuffer, 4);
-                	packetSize = ntohs(packetSize);
+                	packetSize = ntohl(packetSize);
 
 			char data[packetSize];
 			if ( (recv(nextStoneSock, data, packetSize, 0) < 0) )
@@ -234,9 +236,9 @@ void handleConnectionThread(int previousStoneSock)
 			}
 			char dataWrapped[packetSize + 4];
 			memset(dataWrapped, 0, packetSize + 4);
-			unsigned long wrap = htons(packetSize);
+			unsigned long wrap = htonl(packetSize);
 			memcpy(dataWrapped, &wrap, 4);
-			memcpy(dataWrapped, data, packetSize); 
+			memcpy(dataWrapped + 4, data, packetSize); 
 			send(previousStoneSock, dataWrapped, packetSize + 4, 0);
 
 			recFileSize += packetSize;
@@ -269,10 +271,10 @@ void handleConnectionThread(int previousStoneSock)
 		char fileHeader[fileName.length() + 6];
 		memset(fileHeader, 0, fileName.length() + 6);
 
-		unsigned long wrapSize = htons(size);
+		unsigned long wrapSize = htonl(size);
 		memcpy(fileHeader, &wrapSize, 4);
 		unsigned short wrapFileNameSize = htons(fileName.length());
-		memcpy(fileHeader+4, &wrapFileNameSize, 2);
+		memcpy(fileHeader + 4, &wrapFileNameSize, 2);
 		memcpy(fileHeader + 6, fileName.c_str(), fileName.length());
 
 		send(previousStoneSock, fileHeader, fileName.length() + 6, 0);
