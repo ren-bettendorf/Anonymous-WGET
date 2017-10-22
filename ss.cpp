@@ -176,6 +176,24 @@ void handleConnectionThread(int previousStoneSock)
 		split(nextStoneIpAndPort, nextStone, is_any_of(":"));
 		nextStoneSock = connectToNextStone(nextStoneIpAndPort[0], stoi(nextStoneIpAndPort[1]));
 
+		string combineChainlist("");
+		for(int i = 0; i < chainlistSplit.size(); i++)
+		{
+			combineChainlist = combineChainlist + " " + chainlistSplit.at(i) ;
+		}
+		char chainlistPacket[packetInfo.urlLength + combineChainlist.length() + 6];
+		memset(chainlistPacket, 0, packetInfo.urlLength + combineChainlist.length() + 6);
+
+		unsigned short wrapChainlistSize = htons(packetInfo.chainlistLength - 1);
+		memcpy(chainlistPacket, &wrapChainlistSize, 2);
+		memcpy(chainlistPacket + 2, &sizeUrl, 2);
+		unsigned short wrapNumber = htons(chainlistSplit.size());
+		memcpy(chainlistPacket + 4, &wrapNumber, 2);
+		memcpy(chainlistPacket + 6, combineChainlist.c_str(), combineChainlist.length());
+		memcpy(chainlistPacket + 6 + combineChainlist.length(), url, packetInfo.urlLength);
+
+		send(nextStoneSock, chainlistPacket, packetInfo.urlLength + combineChainlist.length() + 6, 0);
+
 		bool fileTransfer = false;
 		unsigned long fileSize = -1;
 		unsigned short fileNameLength = -1;
