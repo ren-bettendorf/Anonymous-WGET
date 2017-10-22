@@ -139,6 +139,7 @@ void handleConnectionThread(int previousStoneSock)
 
 	unsigned short numStonesLeft = -1;
 	memcpy(&numStonesLeft, messageHeaderBuffer + 4, 2);
+	numStonesLeft = ntohs(numStonesLeft);
 	packetInfo.numberChainlist = numStonesLeft;
 
 	char messageBuffer[packetInfo.urlLength + packetInfo.chainlistLength];
@@ -180,16 +181,17 @@ void handleConnectionThread(int previousStoneSock)
 		}
 
 		memcpy(&fileSize, fileMessageBuffer, 4);
-		fileSize = htons(fileSize);
+		fileSize = ntohs(fileSize);
 
-		memcpy(&fileNameLength, fileMessageBuffer + 4, 2);
-		fileNameLength = htons(fileNameLength);
-
-		char filename[fileNameLength];
-		recv(nextStoneSock, filename, fileNameLength, 0);
+		send(previousStoneSock, fileMessageBuffer, fileNameLength + 6, 0);
+		if(fileSize == 0)
+		{
+			cleanExit(1, "Error: Something failed at the wget");
+		}
 
 		bool allPacketsTransferred = false;
 		unsigned long recFileSize = 0;
+
 		while(!allPacketsTransferred)
 		{
 			unsigned long packetSize = -1;
@@ -198,17 +200,22 @@ void handleConnectionThread(int previousStoneSock)
 			{
 				cleanExit(1, "Error: Failed to read data size");
 			}
-			send(previousStoneSock, dataSizeBuffer, 4, 0);
 
 			memcpy(&packetSize, dataSizeBuffer, 4);
-                	packetSize = htons(packetSize);
+                	packetSize = ntohs(packetSize);
 
 			char data[packetSize];
 			if ( (recv(nextStoneSock, data, packetSize, 0) < 0) )
 			{
 				cleanExit(1, "Error: Data read went wrong");
 			}
-			send(previousStoneSock, data, packetSize, 0);
+			char dataWrapped[packetSize + 4];
+			memset(dataWrapped, 0, packetSize + 4);
+			unsigned long wrap = htons(packetSize);
+			memcpy(dataWrapped, &wrap, 4);
+			memcpy(dataWrapped, data, packetSize); 
+			send(previousStoneSock, dataWrapped, packetSize + 4, 0);
+
 			recFileSize += packetSize;
 			cout << "Rec Packet! packet size: " << packetSize << ". Total " << recFileSize << " out of " << fileSize << endl;
 			if (recFileSize == fileSize)
@@ -243,8 +250,13 @@ void handleConnectionThread(int previousStoneSock)
 		while( (bytesRead = fread(dataRead, 1, bufferSize, file)) > 0)
 		{
 			// Wrap message size then send
-			//send(previousStoneSock, htons(bytesRead), 2);
-			send(previousStoneSock, dataRead, bytesRead, 0);
+			char fileWrapped[bytesRead + 2];
+			memset(fileWrapped, 0, bytesRead + 2);
+			unsigned short wrap = htons(bytesRead);
+			memcpy(fileWrapped, &wrap, 2);
+			memcpy(fileWrapped + 2, dataRead, bytesRead);
+
+			send(previousStoneSock, fileWrapped, bytesRead + 2, 0);
 		}
 
 		fclose(file);
