@@ -1,34 +1,21 @@
-#include <stdio.h>
-
-#include <stdlib.h>
-
-#include <unistd.h>
-
-#include <errno.h>
-
-#include <string.h>
-
-#include <netdb.h>
-
-#include <sys/types.h>
-
-#include <netinet/in.h>
-
-#include <sys/socket.h>
-
-#include <sys/stat.h>
-
-#include <arpa/inet.h>
-
-#include <ctype.h>
-
+#include <stdio.h> 
+#include <stdlib.h> 
+#include <unistd.h> 
+#include <errno.h> 
+#include <string.h> 
+#include <netdb.h> 
+#include <sys/types.h> 
+#include <netinet/in.h> 
+#include <sys/socket.h> 
+#include <sys/stat.h> 
+#include <arpa/inet.h> 
+#include <ctype.h> 
 #include "awget.h"
 
 //----------COLLEEN---------------------------------------------------------
-
-#define FILENAME "index.html"
-
+#define FILENAME "index.html" 
 #define MIN(a,b) (((a)(b))?(a):(b))
+
 
 int minimum(int a, int b) {
     if(a > b)
@@ -40,10 +27,9 @@ int minimum(int a, int b) {
         return a;
     }
 }
-
-//---------------------------------------------------------------------------
-
-int main(int argc, char *argv[]) {
+//--------------------------------------------------------------------------- 
+int main(int argc, char *argv[]) 
+{
     //int sockfd;
     char *UrlBuf;
     //Retrieve URL information from the command line argument
@@ -182,18 +168,25 @@ int main(int argc, char *argv[]) {
     int totalSize;
     char *sendBuf;
     totalSize=((sizeof(unsigned short)*3)+((strlen(AddrBuf))+strlen(UrlBuf))*sizeof(char));
-    
+
     sendBuf=(char*)malloc(totalSize+1);
     if(NULL==sendBuf) {
         printf("\n Failed to allocate the memory");
         exit(0);
     }
-    
+	unsigned short wrap = htons(strlen(AddrBuf));
+    memcpy(sendBuf, &wrap, 2);
+	unsigned short wrapAgain = htons(strlen(UrlBuf));
+    memcpy(sendBuf + 2, &wrapAgain, 2);
+   	unsigned short wrapThrice = htons(numOfAddr - 1); 
+   memcpy(sendBuf + 4, &wrapThrice, 2);
+   memcpy(sendBuf + 6, AddrBuf, strlen(AddrBuf));
+   memcpy(sendBuf + 6 + strlen(AddrBuf), UrlBuf, strlen(UrlBuf));
     //----------COLLEEN: We need to send URL and chainfile to the server-----------
     
     // //pack the data;
-       sprintf(sendBuf, "%hu,%hu, %hu, %s, %s", strlen(AddrBuf),strlen(UrlBuf),(numOfAddr-1),AddrBuf, UrlBuf);
-      puts(sendBuf);
+       printf("PACKET: %hu, %hu, %hu, %s, %s",strlen(AddrBuf),strlen(UrlBuf),(numOfAddr-1),AddrBuf, UrlBuf);
+//      puts(sendBuf);
     // int sockfd;
     // struct socketAddressIN serverAddr;
     // socklen_t addr_size;
@@ -289,3 +282,4 @@ int main(int argc, char *argv[]) {
     
     //------------------------------------------------------------------------------------
 }
+

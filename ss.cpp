@@ -391,7 +391,7 @@ int main(int argc, char* argv[])
 			cleanExit(1, errorMessage);
 		}
 		string ipString(ipstr);
-
+		cout << "Connection from: " << clientAddr.sin_addr.s_addr << endl;
 		thread ssSockThread(handleConnectionThread, incomingSock);
 		ssSockThread.join();
 	}
