@@ -1,7 +1,7 @@
 all: awget ss
 
-awget: awget.cpp
-	g++ -o awget awget.cpp
+awget: awget.c
+	gcc -o awget awget.c
 ss: ss.cpp
 	g++ -o ss ss.cpp -pthread
 
