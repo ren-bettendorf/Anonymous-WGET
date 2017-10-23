@@ -21,16 +21,18 @@ using namespace boost;
 
 #define DEFAULTPORT 9000
 
+int serverSock = -1;
 
 void cleanExit(int exitCode, string message)
 {
 	cout << message << endl;
+	if (serverSock != -1)
+		close(serverSock);
 	exit(exitCode);
 }
 
 void sendSystemWget(string url)
 {
-	cout << "<wget " << url << ">" << endl;
 	string command = "wget " + url;
 	const char* wgetMessage = command.c_str();
 	system(wgetMessage);
@@ -58,7 +60,6 @@ string createFinalRequestUrl(string url)
                 url = url + "index.html";
         }
 	url = prefix + url;
-        cout << "FINAL: " << url << endl;
 	return url;
 }
 
@@ -132,17 +133,15 @@ void handleConnectionThread(int previousStoneSock)
 	unsigned short sizeChainlist = -1;
 	memcpy(&sizeChainlist, messageHeaderBuffer, 2);
 	packetInfo.chainlistLength = ntohs(sizeChainlist);
-	cout << "Chainlist Length: " << packetInfo.chainlistLength << endl;
+
 	unsigned short sizeUrl = -1;
 	memcpy(&sizeUrl, messageHeaderBuffer + 2, 2);
 	packetInfo.urlLength = ntohs(sizeUrl);
-	cout << "Url Length: " << packetInfo.urlLength << endl;
 
 	unsigned short numStonesLeft = -1;
 	memcpy(&numStonesLeft, messageHeaderBuffer + 4, 2);
 	numStonesLeft = ntohs(numStonesLeft);
 	packetInfo.numberChainlist = numStonesLeft;
-	cout << "Number Addresses: " << packetInfo.numberChainlist << endl;
 
 	char messageBuffer[packetInfo.urlLength + packetInfo.chainlistLength];
 	if ( recv(previousStoneSock, messageBuffer, packetInfo.urlLength + packetInfo.chainlistLength, 0) < 0 )
@@ -152,16 +151,15 @@ void handleConnectionThread(int previousStoneSock)
 
 	char chainlist[packetInfo.chainlistLength + 1];
 	memcpy(chainlist, messageBuffer, packetInfo.chainlistLength);
-	cout << "Chainlist: " << chainlist << endl;
 
 	char url[packetInfo.urlLength + 1];
 	memcpy(url, messageBuffer + packetInfo.chainlistLength, packetInfo.urlLength);
-	cout << "url: " << url << endl;
+	cout << "Request: " << url << endl;
 
 	if(packetInfo.numberChainlist > 0)
 	{
 		vector<string> chainlistSplit = splitChainlistFromLastStone(chainlist);
-		cout << "Chainlist is" << endl;
+		cout << "Chainlist is: " << endl;
 		for(int i = 0; i < numStonesLeft; i++)
 		{
 			cout << "<" << chainlistSplit.at(i) << ">" << endl;
@@ -169,12 +167,10 @@ void handleConnectionThread(int previousStoneSock)
 		int nextStoneIndex = selectRandomStoneIndex(numStonesLeft);
 		string nextStone = chainlistSplit.at(nextStoneIndex);
 		chainlistSplit.erase(chainlistSplit.begin() + nextStoneIndex);
-		cout << "Next SS is <" << nextStone << ">" << endl << "waiting for file..." << endl;
+		cout << "Next SS is <" << nextStone << ">" << endl;
 
 		vector<string> nextStoneIpAndPort;
 		split(nextStoneIpAndPort, nextStone, is_any_of(":"));
-		for(int i = 0; i < 2; i++)
-			cout << nextStoneIpAndPort[i] << endl;
 
 		nextStoneSock = connectToNextStone(nextStoneIpAndPort[0], stoi(nextStoneIpAndPort[1]));
 
@@ -184,7 +180,6 @@ void handleConnectionThread(int previousStoneSock)
 			combineChainlist = combineChainlist + " " + chainlistSplit.at(i) ;
 		}
 
-		cout << endl << "New chainlist: " << combineChainlist << endl;
 		char chainlistHeader[6];
 		char chainlistPacket[packetInfo.urlLength + combineChainlist.length()];
 		memset(chainlistHeader, 0, 6);
@@ -197,10 +192,10 @@ void handleConnectionThread(int previousStoneSock)
 		memcpy(chainlistHeader + 4, &wrapNumber, 2);
 		memcpy(chainlistPacket, combineChainlist.c_str(), combineChainlist.length());
 		memcpy(chainlistPacket + combineChainlist.length(), url, packetInfo.urlLength);
-		cout << "Sending chainlistHeader" << endl;
+
 		if ( (send(nextStoneSock, chainlistHeader, 6, 0)) < 0)
 			cout << "Error: Bad send" << endl;
-		cout << "Sending chainlist and url" << endl;
+
 		if ( (send(nextStoneSock, chainlistPacket, packetInfo.urlLength + combineChainlist.length(), 0)) < 0)
 			cout << "Error: Bad send" << endl;
 
@@ -208,7 +203,7 @@ void handleConnectionThread(int previousStoneSock)
 		unsigned long fileSize = -1;
 		unsigned short fileNameLength = -1;
 		char fileHeader[6];
-		cout << "Waiting for return message..." << endl;
+		cout << "Waiting for file..." << endl;
 		if ( (recv(nextStoneSock, fileHeader, 6, 0) < 0) )
 		{
 			cleanExit(1, "Error: Failed to read file header");
@@ -218,13 +213,12 @@ void handleConnectionThread(int previousStoneSock)
 		fileSize = ntohl(fileSize);
 		memcpy(&fileNameLength, fileHeader + 4, 2);
 		fileNameLength = ntohs(fileNameLength);
-		cout << "File Size: " << fileSize << ", fileNameLength: " << fileNameLength << endl;
 
 		send(previousStoneSock, fileHeader, 6, 0);
 		char fileName[fileNameLength];
 		recv(nextStoneSock, fileName, fileNameLength, 0);
 
-		cout << "File Name: " << fileName << endl;
+		cout << "Relaying " << fileName << endl;
 		send(previousStoneSock, fileName, fileNameLength, 0);
 		if(fileSize == 0)
 		{
@@ -254,11 +248,12 @@ void handleConnectionThread(int previousStoneSock)
 			send(previousStoneSock, data, packetSize, 0);
 
 			recFileSize += packetSize;
-			cout << "Rec Packet! packet size: " << packetSize << ". Total " << recFileSize << " out of " << fileSize << endl;
+
 			if (recFileSize == fileSize)
 				allPacketsTransferred = true;
 		}
 		close(nextStoneSock);
+		cout << "Finished relaying..." << endl << "Going back to listening" << endl;
 	}
 	else
 	{
@@ -266,20 +261,20 @@ void handleConnectionThread(int previousStoneSock)
 		unsigned long size;
 		string requestUrl = createFinalRequestUrl(url);
 		string fileName = parseFileName(requestUrl);
-
+		cout << "Issuing wget for <" << fileName << ">" << endl;
 		sendSystemWget(requestUrl);
-		cout << "opening <" << fileName.c_str() << ">" << endl;
+		trim(fileName);
+		cout << "File received. Opening <" << fileName << ">" << endl;
 		file = fopen(fileName.c_str(), "rb");
 		if(file == NULL)
 		{
 			cleanExit(1, "Error: Unable to open file");
 		}
-		
+
 		fseek(file, 0, SEEK_END);
 		size = ftell(file);
-		cout << "File size: " << size << endl;
+
 		rewind(file);
-		cout << "Rewinding file " << endl;
 
 
 		// Send file information
@@ -314,7 +309,7 @@ void handleConnectionThread(int previousStoneSock)
 			memset(dataMessage, 0, bytesRead);
 
 			memcpy(dataMessage, dataRead, bytesRead);
-			cout << "Read: " << bytesRead << " forwarding on..." << endl;
+
 			if ( (send(previousStoneSock, dataMessage, bytesRead, 0)) < 0 )
 				cleanExit(1, "Error: Bad send");
 		}
@@ -340,7 +335,6 @@ int main(int argc, char* argv[])
 	// handle signals
 	signal(SIGINT/SIGTERM/SIGKILL, signalHandler);
 
-	int serverSock;
 	struct sockaddr_in sin;
     	int port;
 

@@ -61,9 +61,10 @@ int main(int argc, char *argv[])
 	cout << "Chainlist is " << endl;
     	while(getline(read, chainLine)){
 		cout << "<" << chainLine << ">" << endl;
-		chainLine = chainLine.replace(chainLine.find(","), 2, ":");
+		chainLine = chainLine.replace(chainLine.find(" "), 1, ":");
 		chainLines.push_back(chainLine);
     	}
+	cout << numOfAddr << endl;
     	read.close();
 
 	cout << numOfAddr << endl;
@@ -72,7 +73,8 @@ int main(int argc, char *argv[])
 		cout << chainLines.at(i) << endl;
 	}
    	//Generate a random number between 0 and numOfAddr;
-    	int randIP = rand()%numOfAddr;
+    	srand(time(NULL));
+	int randIP = rand()%numOfAddr;
     	//Debug
     	// printf("\n Random IP address=%d", randIP);
 
@@ -176,7 +178,7 @@ int main(int argc, char *argv[])
 		exit(0);
 	}
 
-   	if( send(clientSocket, sendBuf, url.length() + chainlistStr.length(), 0) < 0 )
+   	if( send(clientSocket, sendBuf, url.length() + chainlistStr.length() + 2, 0) < 0 )
 	{
 		cout << "ERROR: BAD SEND" << endl;
 		exit(0);
