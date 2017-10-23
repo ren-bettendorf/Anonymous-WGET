@@ -38,7 +38,6 @@ void sendSystemWget(string url)
 
 string createFinalRequestUrl(string url)
 {
-	url = url.substr(0, url.length() - 1);
 	string prefix("");
         if( contains(url, ("://")) )
         {
