@@ -226,12 +226,7 @@ void handleConnectionThread(int previousStoneSock)
 		recv(nextStoneSock, fileName, fileNameLength, 0);
 
 		cout << "File Name: " << fileName << endl;
-		char fileMessage[6 + fileNameLength];
-		memset(fileMessage, 0, 6 + fileNameLength);
-
-		memcpy(fileMessage, fileHeader, 6);
-		memcpy(fileMessage + 6, fileName, fileNameLength);
-
+		send(previousStoneSock, fileName, fileNameLength, 0);
 		if(fileSize == 0)
 		{
 			cleanExit(1, "Error: Something failed at the wget");
@@ -250,18 +245,14 @@ void handleConnectionThread(int previousStoneSock)
 
 			memcpy(&packetSize, dataSizeBuffer, 2);
                 	packetSize = ntohs(packetSize);
+			send(previousStoneSock, dataSizeBuffer, 2, 0);
 
 			char data[packetSize];
-			if ( (recv(nextStoneSock, data, packetSize, 0) < 0) )
+			if ( (recv(nextStoneSock, data, packetSize, MSG_WAITALL) < 0) )
 			{
 				cleanExit(1, "Error: Data read went wrong");
 			}
-			char dataWrapped[packetSize + 4];
-			memset(dataWrapped, 0, packetSize + 4);
-			unsigned long wrap = htons(packetSize);
-			memcpy(dataWrapped, &wrap, 4);
-			memcpy(dataWrapped + 4, data, packetSize); 
-			send(previousStoneSock, dataWrapped, packetSize + 4, 0);
+			send(previousStoneSock, data, packetSize, 0);
 
 			recFileSize += packetSize;
 			cout << "Rec Packet! packet size: " << packetSize << ". Total " << recFileSize << " out of " << fileSize << endl;
@@ -293,12 +284,12 @@ void handleConnectionThread(int previousStoneSock)
 
 
 		// Send file information
-		char fileHeader[fileName.length() + 6];
+		char fileHeader[fileName.length() + 7];
 		memset(fileHeader, 0, fileName.length() + 6);
 
 		unsigned long wrapSize = htonl(size);
 		memcpy(fileHeader, &wrapSize, 4);
-		unsigned short wrapFileNameSize = htons(fileName.length());
+		unsigned short wrapFileNameSize = htons(fileName.length() + 1);
 		memcpy(fileHeader + 4, &wrapFileNameSize, 2);
 		fileName += " ";
 		memcpy(fileHeader + 6, fileName.c_str(), fileName.length());
@@ -307,20 +298,25 @@ void handleConnectionThread(int previousStoneSock)
 			cleanExit(1, "Error: Bad send");
 
 
-		int bufferSize = 10000;
+		int bufferSize = 1000;
 		char dataRead[bufferSize];
 		unsigned short bytesRead;
 		cout << "Beginning transfer of file... " << endl;
 		while( (bytesRead = fread(dataRead, 1, bufferSize, file)) > 0)
 		{
 			// Wrap message size then send
-			char fileWrapped[bytesRead + 2];
-			memset(fileWrapped, 0, bytesRead + 2);
+			char dataHeader[2];
+			memset(dataHeader, 0, 2);
 			unsigned short wrap = htons(bytesRead);
-			memcpy(fileWrapped, &wrap, 2);
-			memcpy(fileWrapped + 2, dataRead, bytesRead);
+			memcpy(dataHeader, &wrap, 2);
+			send(previousStoneSock, dataHeader, 2, 0);
+
+			char dataMessage[bytesRead];
+			memset(dataMessage, 0, bytesRead);
+
+			memcpy(dataMessage, dataRead, bytesRead);
 			cout << "Read: " << bytesRead << " forwarding on..." << endl;
-			if ( (send(previousStoneSock, fileWrapped, bytesRead + 2, 0)) < 0 )
+			if ( (send(previousStoneSock, dataMessage, bytesRead, 0)) < 0 )
 				cleanExit(1, "Error: Bad send");
 		}
 		cout << "File transfer finished. Cleaning up" << endl;
