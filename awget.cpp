@@ -20,20 +20,8 @@ using namespace boost;
 using namespace std;
 
 //----------COLLEEN---------------------------------------------------------
-#define FILENAME "index.html" 
-#define MIN(a,b) (((a)(b))?(a):(b))
+#define FILENAME "index.html"
 
-
-int minimum(int a, int b) {
-    if(a > b)
-    {
-        return b;
-    }
-    else
-    {
-        return a;
-    }
-}
 //--------------------------------------------------------------------------- 
 int main(int argc, char *argv[]) 
 {
@@ -156,26 +144,16 @@ int main(int argc, char *argv[])
     //---COLLEEN-STEPS 12, 13, 14 and 15 OF CS457Project2_2017.pdf (pages 7 and 8)---------
     char filename[256];
     int clientSocket;
-    ssize_t length;
     struct sockaddr_in remoteAddress;
-    char buffer[BUFSIZ];
-    int fileSize;
-    FILE *receivedFile;
-    int remaining = 0;
-    
-    //for testing purposes
-    strcpy(filename, FILENAME);
-    
-    memset(buffer, 0, BUFSIZ);
-    
+    FILE *recFile;
+
     //remoteAddress
     memset(&remoteAddress, 0, sizeof(remoteAddress));
-    
+
     remoteAddress.sin_family = AF_INET;
     remoteAddress.sin_addr.s_addr=inet_addr(IP4.c_str());
-    //inet_pton(AF_INET, IP4, &(remoteAddress.sin_addr));
     remoteAddress.sin_port = htons(port);
-    
+
     //create socket
     clientSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (clientSocket == -1)
@@ -191,34 +169,65 @@ int main(int argc, char *argv[])
         exit(0);
    
     }
-    //send packet to
-   int sendBytes;
-	sendBytes = send(clientSocket, sendHeader, 6, 0);
-	cout << "Sendbytes: " << sendBytes << endl;
-   sendBytes=send(clientSocket, sendBuf, url.length() + chainlistStr.length(), 0);
-   cout << "sendBytes: " << sendBytes << endl;;
-    //receive file size
-    recv(clientSocket, buffer, BUFSIZ, 0);
-    fileSize = atoi(buffer);
-    
-    receivedFile = fopen(FILENAME, "w");
-    if (receivedFile == NULL)
-    {
-        printf("ERROR: CANNOT OPEN THE FILE");
-        exit(0);
-    }
-    
-    remaining = fileSize;
-    
-    while(((length = recv(clientSocket, buffer, BUFSIZ, 0)) > 0) && (remaining > 0))
-    {
-        fwrite(buffer, sizeof(char), minimum(remaining, BUFSIZ), receivedFile);
-        remaining -= length;
-    }
-    fclose(receivedFile);
-    close(clientSocket);
-    return 0;
-    
-    //------------------------------------------------------------------------------------
+
+	send(clientSocket, sendHeader, 6, 0);
+   	send(clientSocket, sendBuf, url.length() + chainlistStr.length(), 0);
+    	//receive file size
+	bool fileTransfer = false;
+	unsigned long fileSize = -1;
+	unsigned short fileNameLength = -1;
+	char fileHeader[6];
+	cout << "Waiting for return message..." << endl;
+	if ( (recv(clientSocket, fileHeader, 6, 0) < 0) )
+	{
+		exit(1);
+	}
+
+	memcpy(&fileSize, fileHeader, 4);
+	fileSize = ntohl(fileSize);
+	memcpy(&fileNameLength, fileHeader + 4, 2);
+	fileNameLength = ntohs(fileNameLength);
+	cout << "File Size: " << fileSize << ", fileNameLength: " << fileNameLength << endl;
+
+	char fileName[fileNameLength];
+	recv(clientSocket, fileName, fileNameLength, 0);
+
+	cout << "File Name: <" << fileName << ">" << endl;
+	if(fileSize == 0)
+	{
+		exit(1);
+	}
+
+	bool allPacketsTransferred = false;
+	unsigned long recFileSize = 0;
+	recFile = fopen(fileName, "wb");
+	while(!allPacketsTransferred)
+	{
+		unsigned short packetSize = -1;
+		char dataSizeBuffer[2];
+		if ( (recv(clientSocket, dataSizeBuffer, 2, 0) < 0) )
+		{
+			exit(1);
+		}
+
+		memcpy(&packetSize, dataSizeBuffer, 2);
+               	packetSize = ntohs(packetSize);
+
+		char data[packetSize];
+		if ( (recv(clientSocket, data, packetSize, MSG_WAITALL) < 0) )
+		{
+			exit(1);
+		}
+		fwrite(data, packetSize, 1, recFile);
+		recFileSize += packetSize;
+		cout << "Rec Packet! packet size: " << packetSize << ". Total " << recFileSize << " out of " << fileSize << endl;
+		if (recFileSize == fileSize)
+			allPacketsTransferred = true;
+	}
+    	fclose(recFile);
+    	close(clientSocket);
+    	return 0;
+
+    	//------------------------------------------------------------------------------------
 }
 
