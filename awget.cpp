@@ -19,36 +19,33 @@
 using namespace boost;
 using namespace std;
 
-//----------COLLEEN---------------------------------------------------------
-#define FILENAME "index.html"
-
 //--------------------------------------------------------------------------- 
 int main(int argc, char *argv[]) 
 {
-    string url;
-    //For second argument
-    
+    	string url;
+
     //-----COLLEEN: STEPS 1, 2, 4, 5, 6 and 7 OF CS457Project2_2017.pdf (pages 7 and 8)-----
     //a chain file was passed in
 	url = argv[1];
 	string file;
-    if(argc == 3)
-    {
-	file = argv[2];
-    }
-    //a chainfile has not been passed in
-    else
-    {
-	file = "chaingang.txt";
-        if(read == NULL)
-        {
-            printf("ERROR: awget failed to locate chainfile.txt");
-            exit(0);
-        }
-    }
-    //-------------------------------------------------------------------------------------
-    ifstream read(file);
-    //count the number of IP addresses and Ports in the text file
+    	if(argc == 3)
+    	{
+		file = argv[2];
+    	}
+    	//a chainfile has not been passed in
+    	else
+    	{
+		file = "chaingang.txt";
+        	if(read == NULL)
+        	{
+            	printf("ERROR: awget failed to locate chainfile.txt");
+            	exit(0);
+        	}
+    	}
+
+    	//-------------------------------------------------------------------------------------
+    	ifstream read(file);
+    	//count the number of IP addresses and Ports in the text file
     	unsigned short numOfAddr=0;
 	string chainLine;
 	vector<string> chainLines;
@@ -57,20 +54,20 @@ int main(int argc, char *argv[])
 		chainLines.push_back(chainLine);
     	}//end of while line count
 	numOfAddr = chainLines.size();
-    //Debug
-    // printf("\n Num of IP addresses=%d", numOfAddr);
+    	//Debug
+    	// printf("\n Num of IP addresses=%d", numOfAddr);
     	read.close();
 	cout << numOfAddr << endl;
 	for(int i = 0; i < chainLines.size(); i++)
 	{
 		cout << chainLines.at(i) << endl;
 	}
-    //Generate a random number between 0 and numOfAddr;
-    int randIP = rand()%numOfAddr;
-    //Debug
-    // printf("\n Random IP address=%d", randIP);
+   	//Generate a random number between 0 and numOfAddr;
+    	int randIP = rand()%numOfAddr;
+    	//Debug
+    	// printf("\n Random IP address=%d", randIP);
 
-    //Extract IP address and the port number from the line
+    	//Extract IP address and the port number from the line
 
 	vector<string> ipAndPort;
 	string nextStone = chainLines.at(randIP);
@@ -86,27 +83,27 @@ int main(int argc, char *argv[])
 	chainlistStr += " ";
 	url += " ";
 	//-----COLLEEN: WHEN I ADD MY CODE TO YOURS THERE IS A SEG FAULT ON LINE 121)----
-    //printf("\n IP4=%s", IP4);
-    //printf("\n Port=%s \n", port)
-    //printf("\n IntPort=%d", intPort);
+    	//printf("\n IP4=%s", IP4);
+    	//printf("\n Port=%s \n", port)
+   	//printf("\n IntPort=%d", intPort);
  
-    //Create the socket and connect with the client//
+    	//Create the socket and connect with the client//
 	cout << "Size: " << 6 + chainlistStr.length() + url.length() << endl;
-    char sendHeader[6];
-    char sendBuf[chainlistStr.length() + url.length() ];
+    	char sendHeader[6];
+    	char sendBuf[chainlistStr.length() + url.length() + 2];
 	memset(sendHeader, 0, 6);
-	memset(sendBuf, 0, chainlistStr.length() + url.length());
-	cout << chainlistStr.length() << " " << strlen(chainlistStr.c_str()) << endl;
-	unsigned short wrap = htons(chainlistStr.length());
-    memcpy(sendHeader, &wrap, 2);
-	unsigned short wrapAgain = htons(url.length());
-    memcpy(sendHeader + 2, &wrapAgain, 2);
+	memset(sendBuf, 0, chainlistStr.length() + url.length() + 2);
+
+	unsigned short wrap = htons(chainlistStr.length() + 1);
+    	memcpy(sendHeader, &wrap, 2);
+	unsigned short wrapAgain = htons(url.length() + 1);
+    	memcpy(sendHeader + 2, &wrapAgain, 2);
    	unsigned short wrapThrice = htons(numOfAddr - 1); 
-   memcpy(sendHeader + 4, &wrapThrice, 2);
+   	memcpy(sendHeader + 4, &wrapThrice, 2);
 	cout << chainlistStr << endl;
 	cout << url << endl;
-   memcpy(sendBuf, chainlistStr.c_str(), chainlistStr.length());
-   memcpy(sendBuf + chainlistStr.length(), url.c_str(), url.length());
+   	memcpy(sendBuf, chainlistStr.c_str() + '\0', chainlistStr.length() + 1);
+   	memcpy(sendBuf + chainlistStr.length() + 1, url.c_str() + '\0', url.length() + 1);
     //----------COLLEEN: We need to send URL and chainfile to the server-----------
     
     // //pack the data;
