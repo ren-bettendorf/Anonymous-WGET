@@ -139,33 +139,33 @@ int main(int argc, char *argv[])
     
     
     //---COLLEEN-STEPS 12, 13, 14 and 15 OF CS457Project2_2017.pdf (pages 7 and 8)---------
-    char filename[256];
-    int clientSocket;
-    struct sockaddr_in remoteAddress;
-    FILE *recFile;
+    	char filename[256];
+    	int clientSocket;
+    	struct sockaddr_in remoteAddress;
+   	FILE *recFile;
 
-    //remoteAddress
-    memset(&remoteAddress, 0, sizeof(remoteAddress));
+    	//remoteAddress
+    	memset(&remoteAddress, 0, sizeof(remoteAddress));
 
-    remoteAddress.sin_family = AF_INET;
-    remoteAddress.sin_addr.s_addr=inet_addr(IP4.c_str());
-    remoteAddress.sin_port = htons(port);
+    	remoteAddress.sin_family = AF_INET;
+    	remoteAddress.sin_addr.s_addr=inet_addr(IP4.c_str());
+    	remoteAddress.sin_port = htons(port);
 
-    //create socket
-    clientSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (clientSocket == -1)
-    {
-        printf("ERROR: CREATING THE SOCKET");
-        exit(0);
-    }
+    	//create socket
+    	clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+    	if (clientSocket == -1)
+    	{
+        	printf("ERROR: CREATING THE SOCKET");
+        	exit(0);
+    	}
     
-    //connect
-    if (connect(clientSocket, (struct sockaddr *)&remoteAddress, sizeof(struct sockaddr)) == -1)
-    {
-        printf("ERROR: CONNECTING TO THE SOCKET");
-        exit(0);
+    	//connect
+    	if (connect(clientSocket, (struct sockaddr *)&remoteAddress, sizeof(struct sockaddr)) == -1)
+    	{
+        	printf("ERROR: CONNECTING TO THE SOCKET");
+        	exit(0);
    
-    }
+    	}
 
 	send(clientSocket, sendHeader, 6, 0);
    	send(clientSocket, sendBuf, url.length() + chainlistStr.length(), 0);
@@ -186,9 +186,12 @@ int main(int argc, char *argv[])
 	fileNameLength = ntohs(fileNameLength);
 	cout << "File Size: " << fileSize << ", fileNameLength: " << fileNameLength << endl;
 
-	char fileName[fileNameLength];
-	recv(clientSocket, fileName, fileNameLength, 0);
+	char fileNameRecv[fileNameLength];
+	recv(clientSocket, fileNameRecv, fileNameLength, 0);
 
+	cout << "File Name: <" << fileNameRecv << ">" << endl;
+	string fileName(fileNameRecv);
+	trim(fileName);
 	cout << "File Name: <" << fileName << ">" << endl;
 	if(fileSize == 0)
 	{
@@ -197,7 +200,7 @@ int main(int argc, char *argv[])
 
 	bool allPacketsTransferred = false;
 	unsigned long recFileSize = 0;
-	recFile = fopen(fileName, "wb");
+	recFile = fopen(fileName.c_str(), "wb");
 	while(!allPacketsTransferred)
 	{
 		unsigned short packetSize = -1;

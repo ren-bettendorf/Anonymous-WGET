@@ -291,7 +291,7 @@ void handleConnectionThread(int previousStoneSock)
 		unsigned short wrapFileNameSize = htons(fileName.length() + 1);
 		memcpy(fileHeader + 4, &wrapFileNameSize, 2);
 		fileName += " ";
-		memcpy(fileHeader + 6, fileName.c_str(), fileName.length());
+		memcpy(fileHeader + 6, fileName.c_str() + '\0', fileName.length());
 
 		if ( (send(previousStoneSock, fileHeader, fileName.length() + 6, 0)) < 0 )
 			cleanExit(1, "Error: Bad send");
@@ -402,7 +402,7 @@ int main(int argc, char* argv[])
 		cleanExit(1, errorMessage);
 	}
 
-	listen(serverSock, 1);
+	listen(serverSock, 5);
 
 	while(true)
 	{
@@ -421,7 +421,7 @@ int main(int argc, char* argv[])
 		cout << "Connection from: " << remoteIp << ":" << ntohs(clientAddr.sin_port) << endl;
 		//handleConnectionThread(incomingSock);
 		thread ssSockThread(handleConnectionThread, incomingSock);
-		ssSockThread.join();
+		ssSockThread.detach();
 	}
 
     	return 0;
