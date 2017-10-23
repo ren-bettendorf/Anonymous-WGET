@@ -2,8 +2,8 @@
 
 People who worked on this:
 Ren Bettendorf 831135376
-Shwetha <I don't have their numbers since I forgot to ask>
-Colleen <I don't have their numbers since I forgot to ask>
+Shwetha Gowdanakatte <I don't have their numbers since I forgot to ask>
+Colleen DiCesare <I don't have their numbers since I forgot to ask>
 
 The program works as expected I believe, awget expects:
 ./awget <url> [-c chainlist]
