@@ -14,6 +14,7 @@
 #include <thread>
 #include <boost/algorithm/string.hpp>
 #include <vector>
+#include <fstream>
 #include "awget.h"
 
 using namespace std;
@@ -177,7 +178,7 @@ void handleConnectionThread(int previousStoneSock)
 		string combineChainlist("");
 		for(int i = 0; i < chainlistSplit.size(); i++)
 		{
-			combineChainlist = combineChainlist + " " + chainlistSplit.at(i) ;
+			combineChainlist += " " + chainlistSplit.at(i) ;
 		}
 
 		char chainlistHeader[6];
@@ -200,8 +201,8 @@ void handleConnectionThread(int previousStoneSock)
 			cout << "Error: Bad send" << endl;
 
 		bool fileTransfer = false;
-		unsigned long fileSize = -1;
-		unsigned short fileNameLength = -1;
+		unsigned long fileSize = 0;
+		unsigned short fileNameLength = 0;
 		char fileHeader[6];
 		cout << "Waiting for file..." << endl;
 		if ( (recv(nextStoneSock, fileHeader, 6, 0) < 0) )
@@ -211,6 +212,17 @@ void handleConnectionThread(int previousStoneSock)
 
 		memcpy(&fileSize, fileHeader, 4);
 		fileSize = ntohl(fileSize);
+
+		// If file size = 0 then system call was bad.
+		if( fileSize == 0 )
+		{
+			cout << "Warning: Something went wrong with system call forwarding packet" << endl;
+			if( (send(previousStoneSock, fileHeader, 6, 0) <0) )
+			{
+				cleanExit(1, "Error: Bad send");
+			}
+			return;
+		}
 		memcpy(&fileNameLength, fileHeader + 4, 2);
 		fileNameLength = ntohs(fileNameLength);
 
@@ -220,10 +232,6 @@ void handleConnectionThread(int previousStoneSock)
 
 		cout << "Relaying " << fileName << endl;
 		send(previousStoneSock, fileName, fileNameLength, 0);
-		if(fileSize == 0)
-		{
-			cleanExit(1, "Error: Something failed at the wget");
-		}
 
 		bool allPacketsTransferred = false;
 		unsigned long recFileSize = 0;
@@ -257,7 +265,6 @@ void handleConnectionThread(int previousStoneSock)
 	}
 	else
 	{
-		FILE* file;
 		unsigned long size;
 		string requestUrl = createFinalRequestUrl(url);
 		string fileName = parseFileName(requestUrl);
@@ -265,19 +272,20 @@ void handleConnectionThread(int previousStoneSock)
 		sendSystemWget(requestUrl);
 		trim(fileName);
 		cout << "File received. Opening <" << fileName << ">" << endl;
-		file = fopen(fileName.c_str(), "rb");
-		if(file == NULL)
+		ifstream file(fileName, ios::in|ios::binary);
+		unsigned long fileSize = 0;
+		if(file.bad())
+		{ 
+			cout << "Error: Unable to open file" << endl;
+		}
+		else
 		{
-			cleanExit(1, "Error: Unable to open file");
+			file.seekg(0, file.end);
+			fileSize = file.tellg();
+			file.seekg(0, file.beg);
 		}
 
-		fseek(file, 0, SEEK_END);
-		size = ftell(file);
-
-		rewind(file);
-
-
-		// Send file information
+		// Send file header information
 		char fileHeader[fileName.length() + 7];
 		memset(fileHeader, 0, fileName.length() + 6);
 
@@ -290,14 +298,18 @@ void handleConnectionThread(int previousStoneSock)
 
 		if ( (send(previousStoneSock, fileHeader, fileName.length() + 6, 0)) < 0 )
 			cleanExit(1, "Error: Bad send");
-
+		if(fileSize == 0)
+			return;
 
 		int bufferSize = 1000;
 		char dataRead[bufferSize];
-		unsigned short bytesRead;
+
 		cout << "Beginning transfer of file... " << endl;
-		while( (bytesRead = fread(dataRead, 1, bufferSize, file)) > 0)
+		while( !file.eof() )
 		{
+			file.read(dataRead, bufferSize) ;
+			unsigned short bytesRead = file.gcount();
+
 			// Wrap message size then send
 			char dataHeader[2];
 			memset(dataHeader, 0, 2);
@@ -314,7 +326,7 @@ void handleConnectionThread(int previousStoneSock)
 				cleanExit(1, "Error: Bad send");
 		}
 		cout << "File transfer finished. Cleaning up" << endl;
-		fclose(file);
+		file.close();
 		cout << "Finished transmitting file" << endl;
 		cout << "Removing " << fileName << endl;
 		system( ("rm " + fileName).c_str() );

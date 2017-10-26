@@ -199,7 +199,11 @@ int main(int argc, char *argv[])
 	fileSize = ntohl(fileSize);
 	memcpy(&fileNameLength, fileHeader + 4, 2);
 	fileNameLength = ntohs(fileNameLength);
-
+	if ( fileSize == 0 )
+	{
+		cout << "Error: wget failed to grab file correctly" << endl;
+		exit(1);
+	}
 	char fileNameRecv[fileNameLength];
 	recv(clientSocket, fileNameRecv, fileNameLength, 0);
 
@@ -207,10 +211,6 @@ int main(int argc, char *argv[])
 	string fileName(fileNameRecv);
 	trim(fileName);
 	cout << "File Name: <" << fileName << ">" << endl;
-	if(fileSize == 0)
-	{
-		exit(1);
-	}
 
 	bool allPacketsTransferred = false;
 	unsigned long recFileSize = 0;
