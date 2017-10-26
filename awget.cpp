@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 
     	//-------------------------------------------------------------------------------------
     	ifstream read(file);
-	if ( read.bad() )
+	if ( !read.is_open() )
 	{
 		cout << "ERROR: awget failed to located chainfile" << endl;
 		exit(0);
@@ -140,11 +140,6 @@ int main(int argc, char *argv[])
    	//
     	// //read the content of file
 
-    	//parse out the filename from the URL and if it is NULL, then the filename is == index.html
-
-    	//write(sockfd,sendBuf,sizeof(sendBuf));
-
-
     	//---COLLEEN-STEPS 12, 13, 14 and 15 OF CS457Project2_2017.pdf (pages 7 and 8)---------
     	char filename[256];
     	int clientSocket;
@@ -207,10 +202,8 @@ int main(int argc, char *argv[])
 	char fileNameRecv[fileNameLength];
 	recv(clientSocket, fileNameRecv, fileNameLength, 0);
 
-	cout << "File Name: <" << fileNameRecv << ">" << endl;
 	string fileName(fileNameRecv);
 	trim(fileName);
-	cout << "File Name: <" << fileName << ">" << endl;
 
 	bool allPacketsTransferred = false;
 	unsigned long recFileSize = 0;

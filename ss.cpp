@@ -42,6 +42,9 @@ void sendSystemWget(string url)
 string createFinalRequestUrl(string url)
 {
 	string prefix("");
+	trim(url);
+	cout << endl << "URL PARSING" << endl << endl;
+	cout << "URL: <" << url << ">" << endl;
         if( contains(url, ("://")) )
         {
 		prefix = url.substr(0, url.find("://") + 3);
@@ -52,14 +55,20 @@ string createFinalRequestUrl(string url)
         {
                 if( countSlashes == 0 )
                 {
+			cout << "Adding slash" << endl;
                         url = url + "/";
                 }
 		else if(url.find_last_of("/") != url.size() -1)
 		{
+			cout << "last slash not at end" << endl;
+			cout << "Returning: " << prefix + url << endl;
 			return prefix + url;
 		}
+		cout << "Adding index" << endl;
                 url = url + "index.html";
+		cout << url << endl;
         }
+	cout << "Returning: " << prefix + url << endl;
 	url = prefix + url;
 	return url;
 }
