@@ -265,7 +265,6 @@ void handleConnectionThread(int previousStoneSock)
 	}
 	else
 	{
-		unsigned long size;
 		string requestUrl = createFinalRequestUrl(url);
 		string fileName = parseFileName(requestUrl);
 		cout << "Issuing wget for <" << fileName << ">" << endl;
@@ -274,7 +273,7 @@ void handleConnectionThread(int previousStoneSock)
 		cout << "File received. Opening <" << fileName << ">" << endl;
 		ifstream file(fileName, ios::in|ios::binary);
 		unsigned long fileSize = 0;
-		if(file.bad())
+		if(!file.is_open())
 		{ 
 			cout << "Error: Unable to open file" << endl;
 		}
@@ -282,6 +281,7 @@ void handleConnectionThread(int previousStoneSock)
 		{
 			file.seekg(0, file.end);
 			fileSize = file.tellg();
+			cout << "File Size: " << fileSize << endl;
 			file.seekg(0, file.beg);
 		}
 
@@ -289,7 +289,7 @@ void handleConnectionThread(int previousStoneSock)
 		char fileHeader[fileName.length() + 7];
 		memset(fileHeader, 0, fileName.length() + 6);
 
-		unsigned long wrapSize = htonl(size);
+		unsigned long wrapSize = htonl(fileSize);
 		memcpy(fileHeader, &wrapSize, 4);
 		unsigned short wrapFileNameSize = htons(fileName.length() + 1);
 		memcpy(fileHeader + 4, &wrapFileNameSize, 2);
