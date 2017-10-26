@@ -2,7 +2,6 @@
 #include <stdlib.h> 
 #include <unistd.h> 
 #include <errno.h> 
-#include <string.h> 
 #include <netdb.h> 
 #include <sys/types.h> 
 #include <netinet/in.h> 
@@ -10,25 +9,20 @@
 #include <sys/stat.h> 
 #include <arpa/inet.h> 
 #include <ctype.h> 
-#include "awget.h"
-#include <vector>
-#include <boost/algorithm/string.hpp>
-#include <iostream>
+#include "awget.h" 
+#include <vector> 
+#include <boost/algorithm/string.hpp> 
+#include <iostream> 
 #include <fstream>
-
 using namespace boost;
-using namespace std;
+using namespace std; 
 
-//--------------------------------------------------------------------------- 
-int main(int argc, char *argv[]) 
-{
+int main(int argc, char *argv[]) {
     	string url;
 	chainlist_packet packet;
-    	//-----COLLEEN: STEPS 1, 2, 4, 5, 6 and 7 OF CS457Project2_2017.pdf (pages 7 and 8)-----
     	//a chain file was passed in
 	if(argc > 1)
 		url = argv[1];
-
 	string file;
     	if(argc == 4)
     	{
@@ -50,8 +44,6 @@ int main(int argc, char *argv[])
 		cout << "Expected: ./awget <URL> [-c chainfile]" << endl;
 		exit(0);
 	}
-
-    	//-------------------------------------------------------------------------------------
     	ifstream read(file);
 	if ( !read.is_open() )
 	{
@@ -74,31 +66,33 @@ int main(int argc, char *argv[])
 	unsigned short readChains = 0;
     	while(getline(read, chainLine)){
 		cout << "<" << chainLine << ">" << endl;
+		if ( chainLine.find(" ") > chainLine.size() )
+		{
+				cout << "Error: Problem parsing chainfile" << endl;
+				exit(0);
+		}
 		chainLine = chainLine.replace(chainLine.find(" "), 1, ":");
 		chainLines.push_back(chainLine);
 		readChains++;
     	}
 	if (readChains != numOfAddr)
 	{
-		cout << "Error: Chainlist read error. Mismatched number of entries" << endl;
+		cout << "Error: Chainlist read error. Mismatched number of entries" 
+<< endl;
 		exit(0);
 	}
     	read.close();
-
 	//Generate a random number between 0 and numOfAddr;
     	srand(time(NULL));
 	int randIP = rand()%numOfAddr;
-
     	//Extract IP address and the port number from the line
-
 	vector<string> ipAndPort;
 	string nextStone = chainLines.at(randIP);
 	cout << "Next SS is <" << nextStone << ">" << endl;
-
 	chainLines.erase(chainLines.begin() + randIP);
 	split(ipAndPort, nextStone, is_any_of(":"));
 	string IP4 = ipAndPort[0];
-	int port =  stoi(ipAndPort[1]);
+	int port = stoi(ipAndPort[1]);
     	string chainlistStr("");
 	for(int i = 0; i < chainLines.size(); i++)
 	{
@@ -110,65 +104,29 @@ int main(int argc, char *argv[])
 	url += " ";
 	packet.url = url.c_str();
 	packet.urlLength = url.length();
-
-	//-----COLLEEN: WHEN I ADD MY CODE TO YOURS THERE IS A SEG FAULT ON LINE 121)--
     	//Create the socket and connect with the client//
     	char sendHeader[6];
     	char sendBuf[packet.chainlistLength + packet.urlLength + 2];
 	memset(sendHeader, 0, 6);
 	memset(sendBuf, 0, packet.chainlistLength + packet.urlLength + 2);
-
 	unsigned short wrap = htons(packet.chainlistLength + 1);
     	memcpy(sendHeader, &wrap, 2);
 	unsigned short wrapAgain = htons(packet.urlLength + 1);
     	memcpy(sendHeader + 2, &wrapAgain, 2);
-   	unsigned short wrapThrice = htons(packet.numberChainlist); 
+   	unsigned short wrapThrice = htons(packet.numberChainlist);
    	memcpy(sendHeader + 4, &wrapThrice, 2);
-
    	memcpy(sendBuf, packet.chainlist + '\0', packet.chainlistLength + 1);
-   	memcpy(sendBuf + packet.chainlistLength + 1, packet.url + '\0', packet.urlLength + 1);
-    	//----------COLLEEN: We need to send URL and chainfile to the server-----------
-
-    	//pack the data;
-      	// printf("PACKET: %hu, %hu, %hu, %s, %s",strlen(AddrBuf),strlen(UrlBuf),(numOfAddr-1),AddrBuf, UrlBuf);
-	//      puts(sendBuf);
-    	// int sockfd;
-    	// struct socketAddressIN serverAddr;
-    	// socklen_t addr_size;
-    	// //Create socket
-    	// sockfd=socket(AF_INET, SOCK_STREAM, 0);
-    	// if(sockfd<0) {
-    	// printf("\n failed to create the socket");
-    	// exit(0);
-    	// }
-    	// bzero((char *) &serverAddr, sizeof(serverAddr));
-    	// //Configure server settings//
-    	// serverAddr.sin_family = AF_INET;
-    	// //set the port number//
-    	// serverAddr.sin_port = htons(intPort);
-    	// //set the IP address//
-    	// serverAddr.sin_addr.s_addr = inet_addr(IP4);
-    	// //Connet to the client
-    	// /*if(connect(sockfd, (struct sockaddr *) &serverAddr, sizeof(serverAddr))<0){
-    	// printf("\n Error connecting to server");
-    	// exit(0);
-    	// }*/
-   	//
-    	// //read the content of file
-
-    	//---COLLEEN-STEPS 12, 13, 14 and 15 OF CS457Project2_2017.pdf (pages 7 and 8)---------
+   	memcpy(sendBuf + packet.chainlistLength + 1, packet.url + '\0', 
+packet.urlLength + 1);
     	char filename[256];
     	int clientSocket;
     	struct sockaddr_in remoteAddress;
    	FILE *recFile;
-
     	//remoteAddress
     	memset(&remoteAddress, 0, sizeof(remoteAddress));
-
     	remoteAddress.sin_family = AF_INET;
     	remoteAddress.sin_addr.s_addr=inet_addr(IP4.c_str());
     	remoteAddress.sin_port = htons(port);
-
     	//create socket
     	clientSocket = socket(AF_INET, SOCK_STREAM, 0);
     	if (clientSocket == -1)
@@ -177,24 +135,23 @@ int main(int argc, char *argv[])
         	exit(0);
     	}
     	//connect
-    	if (connect(clientSocket, (struct sockaddr *)&remoteAddress, sizeof(struct sockaddr)) == -1)
+    	if (connect(clientSocket, (struct sockaddr *)&remoteAddress, sizeof(struct 
+sockaddr)) == -1)
     	{
         	cout << "ERROR: CONNECTING TO THE SOCKET" << endl;
         	exit(0);
     	}
-
 	if ( send(clientSocket, sendHeader, 6, 0) < 0)
 	{
 		cout << "ERROR: BAD SEND" << endl;
 		exit(0);
 	}
-
-   	if( send(clientSocket, sendBuf, url.length() + chainlistStr.length() + 2, 0) < 0 )
+   	if( send(clientSocket, sendBuf, url.length() + chainlistStr.length() + 2, 0) 
+< 0 )
 	{
 		cout << "ERROR: BAD SEND" << endl;
 		exit(0);
 	}
-
     	//receive file size
 	bool fileTransfer = false;
 	unsigned long fileSize = -1;
@@ -205,7 +162,6 @@ int main(int argc, char *argv[])
 	{
 		exit(1);
 	}
-
 	memcpy(&fileSize, fileHeader, 4);
 	fileSize = ntohl(fileSize);
 	memcpy(&fileNameLength, fileHeader + 4, 2);
@@ -217,10 +173,8 @@ int main(int argc, char *argv[])
 	}
 	char fileNameRecv[fileNameLength];
 	recv(clientSocket, fileNameRecv, fileNameLength, 0);
-
 	string fileName(fileNameRecv);
 	trim(fileName);
-
 	bool allPacketsTransferred = false;
 	unsigned long recFileSize = 0;
 	recFile = fopen(fileName.c_str(), "wb");
@@ -233,10 +187,8 @@ int main(int argc, char *argv[])
 		{
 			exit(1);
 		}
-
 		memcpy(&packetSize, dataSizeBuffer, 2);
                	packetSize = ntohs(packetSize);
-
 		char data[packetSize];
 		if ( (recv(clientSocket, data, packetSize, MSG_WAITALL) < 0) )
 		{
@@ -244,7 +196,6 @@ int main(int argc, char *argv[])
 		}
 		fwrite(data, packetSize, 1, recFile);
 		recFileSize += packetSize;
-
 		if (recFileSize == fileSize)
 			allPacketsTransferred = true;
 	}
@@ -253,7 +204,4 @@ int main(int argc, char *argv[])
 	cout << "Received file: " << fileName << endl;
 	cout << "Goodbye!" << endl;
     	return 0;
-
-    	//------------------------------------------------------------------------------------
 }
-
