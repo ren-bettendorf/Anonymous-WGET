@@ -23,11 +23,12 @@ using namespace std;
 int main(int argc, char *argv[]) 
 {
     	string url;
-
+	chainlist_packet packet;
     	//-----COLLEEN: STEPS 1, 2, 4, 5, 6 and 7 OF CS457Project2_2017.pdf (pages 7 and 8)-----
     	//a chain file was passed in
 	if(argc > 1)
 		url = argv[1];
+
 	string file;
     	if(argc == 4)
     	{
@@ -58,25 +59,35 @@ int main(int argc, char *argv[])
 	vector<string> chainLines;
 	getline(read, chainLine);
 	unsigned short numOfAddr = stoi(chainLine);
+	if (numOfAddr <= 0)
+	{
+		cout << "Error: Chainlist read error. Number too low" << endl;
+		exit(0);
+	}
+	packet.numberChainlist = numOfAddr - 1;
 	cout << "Chainlist is " << endl;
+	unsigned short readChains = 0;
     	while(getline(read, chainLine)){
 		cout << "<" << chainLine << ">" << endl;
 		chainLine = chainLine.replace(chainLine.find(" "), 1, ":");
 		chainLines.push_back(chainLine);
+		readChains++;
     	}
-	cout << numOfAddr << endl;
+	if (readChains != numOfAddr)
+	{
+		cout << "Error: Chainlist read error. Mismatched number of entries" << endl;
+		exit(0);
+	}
     	read.close();
 
-	cout << numOfAddr << endl;
 	for(int i = 0; i < chainLines.size(); i++)
 	{
 		cout << chainLines.at(i) << endl;
 	}
-   	//Generate a random number between 0 and numOfAddr;
+
+	//Generate a random number between 0 and numOfAddr;
     	srand(time(NULL));
 	int randIP = rand()%numOfAddr;
-    	//Debug
-    	// printf("\n Random IP address=%d", randIP);
 
     	//Extract IP address and the port number from the line
 
@@ -94,23 +105,28 @@ int main(int argc, char *argv[])
 		chainlistStr = chainlistStr + " " + chainLines.at(i);
 	}
 	chainlistStr += " ";
+	packet.chainlist = chainlistStr.c_str();
+	packet.chainlistLength = chainlistStr.length();
 	url += " ";
+	packet.url = url.c_str();
+	packet.urlLength = url.length();
+
 	//-----COLLEEN: WHEN I ADD MY CODE TO YOURS THERE IS A SEG FAULT ON LINE 121)--
     	//Create the socket and connect with the client//
     	char sendHeader[6];
-    	char sendBuf[chainlistStr.length() + url.length() + 2];
+    	char sendBuf[packet.chainlistLength + packet.urlLength + 2];
 	memset(sendHeader, 0, 6);
-	memset(sendBuf, 0, chainlistStr.length() + url.length() + 2);
+	memset(sendBuf, 0, packet.chainlistLength + packet.urlLength + 2);
 
-	unsigned short wrap = htons(chainlistStr.length() + 1);
+	unsigned short wrap = htons(packet.chainlistLength + 1);
     	memcpy(sendHeader, &wrap, 2);
-	unsigned short wrapAgain = htons(url.length() + 1);
+	unsigned short wrapAgain = htons(packet.urlLength + 1);
     	memcpy(sendHeader + 2, &wrapAgain, 2);
-   	unsigned short wrapThrice = htons(numOfAddr - 1); 
+   	unsigned short wrapThrice = htons(packet.numberChainlist); 
    	memcpy(sendHeader + 4, &wrapThrice, 2);
 
-   	memcpy(sendBuf, chainlistStr.c_str() + '\0', chainlistStr.length() + 1);
-   	memcpy(sendBuf + chainlistStr.length() + 1, url.c_str() + '\0', url.length() + 1);
+   	memcpy(sendBuf, packet.chainlist + '\0', packet.chainlistLength + 1);
+   	memcpy(sendBuf + packet.chainlistLength + 1, packet.url + '\0', packet.urlLength + 1);
     	//----------COLLEEN: We need to send URL and chainfile to the server-----------
 
     	//pack the data;

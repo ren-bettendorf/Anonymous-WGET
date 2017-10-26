@@ -5,7 +5,8 @@
 
 struct chainlist_packet {
 	unsigned short chainlistLength, urlLength, numberChainlist;
-	char* chainlist, url;
+	const char* chainlist;
+	const char* url;
 };
 
 #endif
