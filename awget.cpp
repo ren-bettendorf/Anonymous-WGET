@@ -41,10 +41,15 @@ int main(int argc, char *argv[])
 		file = argv[3];
     	}
     	//a chainfile has not been passed in
-    	else
+    	else if (argc == 2)
     	{
 		file = "chaingang.txt";
     	}
+	else
+	{
+		cout << "Expected: ./awget <URL> [-c chainfile]" << endl;
+		exit(0);
+	}
 
     	//-------------------------------------------------------------------------------------
     	ifstream read(file);
