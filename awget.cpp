@@ -80,11 +80,6 @@ int main(int argc, char *argv[])
 	}
     	read.close();
 
-	for(int i = 0; i < chainLines.size(); i++)
-	{
-		cout << chainLines.at(i) << endl;
-	}
-
 	//Generate a random number between 0 and numOfAddr;
     	srand(time(NULL));
 	int randIP = rand()%numOfAddr;
@@ -244,7 +239,7 @@ int main(int argc, char *argv[])
 		}
 		fwrite(data, packetSize, 1, recFile);
 		recFileSize += packetSize;
-		cout << "Rec Packet! packet size: " << packetSize << ". Total " << recFileSize << " out of " << fileSize << endl;
+
 		if (recFileSize == fileSize)
 			allPacketsTransferred = true;
 	}
